@@ -1,4 +1,5 @@
 from order import Order, OrderQueue, OrderTable
+from position import PositionTable
 
 
 class Ledger:
@@ -11,11 +12,12 @@ class Ledger:
     def __init__(self):
         self.order_queue = OrderQueue()
         self.order_table = OrderTable()
+        self.position_table = PositionTable()
 
-    def order_hash(self, symbol, quantity, price, side, order_type, meta):
+    def order_hash(self, symbol, price, quantity, side, order_type, meta):
         return Order.make_order_hash(symbol=symbol,
-                                     quantity=quantity,
                                      price=price,
+                                     quantity=quantity,
                                      side=side,
                                      order_type=order_type,
                                      meta=meta)
@@ -23,11 +25,17 @@ class Ledger:
     def get_orders(self, strategy_name):
         return self.order_table.get_strategy_orders(strategy_name=strategy_name)
 
-    def init_order(self, strategy_name, symbol, quantity, price, side, order_type, meta=None):
+    def get_positions(self, strategy_name):
+        return self.position_table.position_table.get(strategy_name)
+
+    def get_position(self, strategy_name, symbol):
+        return self.position_table.get_position(strategy_name=strategy_name, symbol=symbol).__dict__
+
+    def init_order(self, strategy_name, symbol, price, quantity, side, order_type, meta=None):
         order = Order(strategy_name=strategy_name,
                       symbol=symbol,
-                      quantity=quantity,
                       price=price,
+                      quantity=quantity,
                       side=side,
                       order_type=order_type,
                       meta=meta)
@@ -38,10 +46,18 @@ class Ledger:
     def register_order(self, order_number, order_hash):
         return self.order_table.make_open_order(order_hash=order_hash, order_number=order_number)
 
-    def fill_order(self, strategy_name, order_number, quantity):
-        self.order_table.fill_order(strategy_name=strategy_name,
-                                    order_number=order_number,
-                                    quantity=quantity)
+    def fill_order(self, strategy_name, order_number, price, quantity, position_amount=None):
+        order = self.order_table.fill_order(strategy_name=strategy_name,
+                                            order_number=order_number,
+                                            quantity=quantity,
+                                            return_order=True)
+        order_base_info = order.order_base_info
+        self.position_table.update_position(strategy_name=strategy_name,
+                                            symbol=order_base_info['symbol'],
+                                            side=order_base_info['side'],
+                                            price=price,
+                                            quantity=quantity,
+                                            position_amount=position_amount)
 
 
 if __name__ == '__main__':
@@ -64,6 +80,7 @@ if __name__ == '__main__':
     # # client's order is registered from real exchange (has order number)
     # strategy_name = ledger.register_order(order_number, order_hash)
     #
-    # ledger.fill_order(strategy_name, order_number, 1)
+    # ledger.fill_order(strategy_name, order_number, 100, 1)
+    # ledger.fill_order(strategy_name, order_number, 100, 1)
 
     print(ledger.order_table.order_table)

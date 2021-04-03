@@ -23,11 +23,9 @@ class OrderTable:
             f = open(self.CACHE_NAME, 'rb')
             cached = pickle.load(f)
             self.order_table = cached.order_table
-            self.order_info = cached.order_info
             self.order_meta = cached.order_meta
         else:
             self.order_table = {}
-            self.order_info = {}
             self.order_meta = {}
             self._save_state()
 
@@ -41,9 +39,6 @@ class OrderTable:
         """
         if order.init_id not in self.order_table:
             self.order_table[order.init_id] = order
-
-        if order.hash not in self.order_info:
-            self.order_info[order.hash] = order.order_base_info
 
         if order.hash not in self.order_meta:
             self.order_meta[order.hash] = {
@@ -63,7 +58,6 @@ class OrderTable:
         try:
             order = self.order_meta[order_hash]['equal_orders'].pop()
             if not self.order_meta[order_hash]['equal_orders']:
-                del self.order_info[order_hash]
                 del self.order_meta[order_hash]
             self._save_state()
             return order
@@ -78,7 +72,7 @@ class OrderTable:
         self._save_state()
         return order.strategy_name
 
-    def fill_order(self, strategy_name, order_number, quantity):
+    def fill_order(self, strategy_name, order_number, quantity, return_order=False):
         for _, order in self.order_table.items():
             if (strategy_name == order.strategy_name) and \
                     (order.state == 'open') and \
@@ -86,15 +80,20 @@ class OrderTable:
                 filled = order.fill_order(quantity, return_filled=True)
                 if filled:
                     self.clean_filled_orders()
-        self._save_state()
+                self._save_state()
+                if return_order:
+                    return order
 
     def clean_filled_orders(self):
         """
         order 상태가 filled인 경우 딕셔너리에서 제거
         """
+        to_pop = []
         for init_id, order in self.order_table.items():
             if order.state == OrderState.FILLED:
-                del self.order_table[init_id]
+                to_pop.append(init_id)
+        for init_id in to_pop:
+            self.order_table.pop(init_id)
         self._save_state()
 
     def get_strategy_orders(self,
