@@ -23,10 +23,13 @@ class Ledger:
                                      meta=meta)
 
     def get_orders(self, strategy_name):
-        return self.order_table.get_strategy_orders(strategy_name=strategy_name)
+        return self.order_table.get_orders(strategy_name=strategy_name)
+
+    def get_order(self, strategy_name, order_number):
+        return self.order_table.get_order(strategy_name=strategy_name, order_number=order_number).__dict__
 
     def get_positions(self, strategy_name):
-        return self.position_table.position_table.get(strategy_name)
+        return self.position_table.get_positions(strategy_name=strategy_name)
 
     def get_position(self, strategy_name, symbol):
         return self.position_table.get_position(strategy_name=strategy_name, symbol=symbol).__dict__
@@ -63,24 +66,24 @@ class Ledger:
 if __name__ == '__main__':
     ledger = Ledger()
 
-    # order_params = {
-    #     'strategy_name': 'strategy_1',
-    #     'symbol': '005930',
-    #     'quantity': 2,
-    #     'price': 100,
-    #     'side': 'LONG',
-    #     'order_type': 'LIMIT',
-    #     'meta': '신한'
-    # }
-    #
-    # # client(strategy) sends order
-    # order_hash = ledger.init_order(**order_params)
-    #
-    # order_number = 'ordernumber123'
-    # # client's order is registered from real exchange (has order number)
-    # strategy_name = ledger.register_order(order_number, order_hash)
-    #
-    # ledger.fill_order(strategy_name, order_number, 100, 1)
+    order_params = {
+        'strategy_name': 'strategy_1',
+        'symbol': '005930',
+        'quantity': 2,
+        'price': 100,
+        'side': 'BUY',
+        'order_type': 'LIMIT',
+        'meta': '신한'
+    }
+
+    # client(strategy) sends order
+    order_hash = ledger.init_order(**order_params)
+
+    order_number = 'ordernumber123'
+    # client's order is registered from real exchange (has order number)
+    strategy_name = ledger.register_order(order_number, order_hash)
+
+    ledger.fill_order(strategy_name, order_number, 100, 1)
     # ledger.fill_order(strategy_name, order_number, 100, 1)
 
     print(ledger.order_table.order_table)

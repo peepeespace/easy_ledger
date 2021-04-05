@@ -143,7 +143,7 @@ def load_cached_order(order_init_id):
 
 
 if __name__ == '__main__':
-    o = Order('strategy', 'symbol', 1, 100, 'LONG', 'LIMIT', '신한')
+    o = Order('strategy', 'symbol', 1, 100, 'BUY', 'LIMIT', '신한')
     print(o.state)
     print(o.__dict__)
 

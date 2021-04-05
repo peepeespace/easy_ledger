@@ -50,13 +50,13 @@ class Position:
         else:
             self.position_amount += position_amount
 
-        if self.side == 'LONG':
+        if self.side == 'BUY':
             if quantity > 0:
                 trade_position = 'ENTER'
             else:
                 trade_position = 'EXIT'
 
-        if self.side == 'SHORT':
+        if self.side == 'SELL':
             if quantity < 0:
                 trade_position = 'ENTER'
             else:
@@ -96,7 +96,7 @@ class Position:
 
 if __name__ == '__main__':
     p = Position('name', 'symbol')
-    p.open_position(side='LONG', price=100, quantity=1, position_amount=-100)
+    p.open_position(side='BUY', price=100, quantity=1, position_amount=-100)
     print(p.__dict__)
     p.update_position(price=110, quantity=3, position_amount=-330)
     print(p.__dict__)

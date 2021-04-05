@@ -24,14 +24,19 @@ class PositionTable:
         with open(self.CACHE_NAME, 'wb') as f:
             pickle.dump(self, f)
 
-    def get_position(self, strategy_name, symbol):
+    def get_positions(self, strategy_name):
         if strategy_name not in self.position_table:
             self.position_table[strategy_name] = {}
 
-        if symbol not in self.position_table[strategy_name]:
-            self.position_table[strategy_name][symbol] = Position(strategy_name=strategy_name, symbol=symbol)
+        return self.position_table[strategy_name]
 
-        return self.position_table[strategy_name][symbol]
+    def get_position(self, strategy_name, symbol):
+        positions = self.get_positions(strategy_name)
+
+        if symbol not in positions:
+            positions[symbol] = Position(strategy_name=strategy_name, symbol=symbol)
+
+        return positions[symbol]
 
     def update_position(self, strategy_name, symbol, side, price, quantity, position_amount):
         position = self.get_position(strategy_name, symbol)

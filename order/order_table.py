@@ -96,14 +96,19 @@ class OrderTable:
             self.order_table.pop(init_id)
         self._save_state()
 
-    def get_strategy_orders(self,
-                            strategy_name,
-                            states: list = [OrderState.INIT, OrderState.OPEN, OrderState.FILLED]):
+    def get_orders(self,
+                   strategy_name,
+                   states: list = [OrderState.INIT, OrderState.OPEN, OrderState.FILLED]):
         orders = []
         for _, order in self.order_table.items():
             if (order.strategy_name == strategy_name) and (order.state in states):
                 orders.append(order)
         return orders
+
+    def get_order(self, strategy_name, order_number):
+        for _, order in self.order_table.items():
+            if (order.strategy_name == strategy_name) and (order.order_number == order_number):
+                return order
 
 
 if __name__ == '__main__':
@@ -116,5 +121,5 @@ if __name__ == '__main__':
     # ot.add_order(o)
     # ot.add_order(oo)
 
-    orders = ot.get_strategy_orders('strategy', [OrderState.FILLED])
+    orders = ot.get_orders('strategy', [OrderState.FILLED])
     print(ot)
