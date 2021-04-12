@@ -75,10 +75,14 @@ class Ledger:
 
 
 if __name__ == '__main__':
+    strategy_name = 'strategy_1'
+
     ledger = Ledger()
 
+    ledger.update_holding(strategy_name, 'cash', 1000)
+
     order_params = {
-        'strategy_name': 'strategy_1',
+        'strategy_name': strategy_name,
         'symbol': '005930',
         'quantity': 2,
         'price': 100,
@@ -92,9 +96,9 @@ if __name__ == '__main__':
 
     order_number = 'ordernumber123'
     # client's order is registered from real exchange (has order number)
-    strategy_name = ledger.register_order(order_number, order_hash)
+    st = ledger.register_order(order_number, order_hash)
 
-    ledger.fill_order(strategy_name, order_number, 100, 1)
+    ledger.fill_order(st, order_number, 100, 1)
     # ledger.fill_order(strategy_name, order_number, 100, 1)
 
     print(ledger.order_table.order_table)

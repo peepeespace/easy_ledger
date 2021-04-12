@@ -21,7 +21,7 @@ class Order:
     상태가 변할때마다 사용할 수 있는 property의 수가 늘어난다.
     """
 
-    def __init__(self, strategy_name, symbol, price, quantity, side, order_type, meta=None):
+    def __init__(self, strategy_name, symbol, price, quantity, side, order_type, meta=None, position_amount=None):
         if not os.path.exists(CACHE_DIR):
             os.mkdir(CACHE_DIR)
 
@@ -35,6 +35,12 @@ class Order:
         self.side = side
         self.order_type = order_type
         self.meta = meta
+
+        if position_amount is None:
+            # 실투자 금액
+            self.position_amount = price * quantity
+        else:
+            self.position_amount = position_amount
 
         self.hash = self.make_order_hash(symbol=symbol,
                                          quantity=quantity,
