@@ -1,6 +1,7 @@
 *.pyc
 *.pkl
 *.csv
+*.db
 db.sqlite3
 
 .env
