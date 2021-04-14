@@ -2,7 +2,7 @@ import zmq
 import json
 import traceback
 
-from ledger import Ledger
+from core.ledger import Ledger
 
 
 class LedgerServer:

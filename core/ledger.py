@@ -1,6 +1,7 @@
-from order import Order, OrderQueue, OrderTable
-from position import PositionTable
-from holding import HoldingTable
+from core.order import Order
+from core.cash_table import CashTable
+from core.order_table import OrderTable
+from core.position_table import PositionTable
 
 
 class Ledger:
@@ -11,10 +12,9 @@ class Ledger:
     """
 
     def __init__(self):
-        self.order_queue = OrderQueue()
+        self.cash_table = CashTable()
         self.order_table = OrderTable()
         self.position_table = PositionTable()
-        self.holding_table = HoldingTable()
 
     def order_hash(self, symbol, price, quantity, side, order_type, meta):
         return Order.make_order_hash(symbol=symbol,
@@ -24,14 +24,11 @@ class Ledger:
                                      order_type=order_type,
                                      meta=meta)
 
-    def get_holdings(self, strategy_name):
-        return self.holding_table.get_holdings(strategy_name=strategy_name)
+    def get_cash(self, strategy_name, meta=None):
+        return self.cash_table.get_cash(strategy_name=strategy_name, meta=meta)
 
-    def get_holding(self, strategy_name, field):
-        return self.holding_table.get_holding(strategy_name=strategy_name, field=field)
-
-    def update_holding(self, strategy_name, field, amount):
-        self.holding_table.update_holding(strategy_name=strategy_name, field=field, amount=amount)
+    def update_cash(self, strategy_name, amount, meta=None):
+        self.cash_table.update_cash(strategy_name=strategy_name, amount=amount, meta=meta)
 
     def get_orders(self, strategy_name):
         return self.order_table.get_orders(strategy_name=strategy_name)
@@ -53,7 +50,6 @@ class Ledger:
                       side=side,
                       order_type=order_type,
                       meta=meta)
-        self.order_queue.add_order(order.hash)
         self.order_table.add_order(order)
         return order.hash
 

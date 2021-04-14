@@ -1,7 +1,7 @@
 import os
 import pickle
 
-from .api import Position, PositionState
+from .position import Position, PositionState
 
 
 class PositionTable:

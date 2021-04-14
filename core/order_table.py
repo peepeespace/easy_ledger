@@ -1,7 +1,8 @@
 import os
 import pickle
+from typing import List
 
-from order.api import OrderState
+from core.order import Order, OrderState
 
 
 class OrderTable:
@@ -10,7 +11,7 @@ class OrderTable:
     예를 들어서 동일한 종류의 주문을 어떤 전략들이 현재 넣은 상태인지 등
 
     hash값이 같은 경우도 발생할 수 있기 때문에 (다른 전략이 같은 종류의 주문을 연속해서 넣는 경우)
-    strategies_with_current_order과 같은 meta 데이터로 이를 관리한다.
+    equal_orders 같은 meta 데이터로 이를 관리한다.
     """
 
     CACHE_NAME = 'OrderTable.pkl'
@@ -33,7 +34,7 @@ class OrderTable:
         with open(self.CACHE_NAME, 'wb') as f:
             pickle.dump(self, f)
 
-    def add_order(self, order):
+    def add_order(self, order: Order):
         """
         equal_orders: 같은 내용의 주문을 여러개의 전략 혹은 하나의 전략에서 연속 발생할 수 있기 때문에 관리 필요
         """
@@ -49,6 +50,19 @@ class OrderTable:
 
         self._save_state()
 
+    def remove_order(self, order_number: str):
+        to_del = []
+        for init_id, order in self.order_table.items():
+            if order.ORDER_STATE != OrderState.INIT:
+                if order.order_number == order_number:
+                    order.make_closed_order()
+                    to_del.append(init_id)
+
+        for id in to_del:
+            del self.order_table[id]
+
+        self._save_state()
+
     def register_order(self, order_hash):
         """
         add된 order를 실제 주문 거래소(소스)에서 접수가 완료된 것을 확인한 후 register된 order를 리턴하는 역할
@@ -57,7 +71,7 @@ class OrderTable:
         """
         try:
             order = self.order_meta[order_hash]['equal_orders'].pop()
-            if not self.order_meta[order_hash]['equal_orders']:
+            if not self.order_meta[order_hash]['equal_orders']: # 더 이상 이 주문이 접수되길 대기하는 전략이 없다면 제거
                 del self.order_meta[order_hash]
             self._save_state()
             return order
@@ -65,6 +79,7 @@ class OrderTable:
             return
 
     def make_open_order(self, order_hash, order_number):
+        # 주문을 접수시킴과 동시에 미체결 상태로 전환
         order = self.register_order(order_hash)
         if order is not None:
             order.make_open_order(order_number)
@@ -75,44 +90,66 @@ class OrderTable:
     def fill_order(self, strategy_name, order_number, quantity, return_order=False):
         for _, order in self.order_table.items():
             if (strategy_name == order.strategy_name) and \
-                    (order.state == 'open') and \
+                    (order.state == OrderState.OPEN) and \
                         (order_number == order.order_number):
-                filled = order.fill_order(quantity, return_filled=True)
+                try:
+                    filled = order.fill_order(quantity, return_filled=True)
+                except:
+                    # 주문 수량보다 많은 수량을 체결시키려 하면 오류 발생
+                    filled = False
                 if filled:
                     self.clean_filled_orders()
                 self._save_state()
                 if return_order:
                     return order
 
-    def clean_filled_orders(self):
+    def clean_orders(self, state: OrderState, strategy_name: str = None):
         """
-        order 상태가 filled인 경우 딕셔너리에서 제거
+        주문 상태에 따라 필터하여 제거하는 함수
+        전략 이름을 인자값으로 넣었다면 strategy로 한번 더 필터링하여 주문 제거/정리
         """
         to_pop = []
         for init_id, order in self.order_table.items():
-            if order.state == OrderState.FILLED:
-                to_pop.append(init_id)
+            if order.state == state:
+                if strategy_name is not None and order.strategy_name == strategy_name:
+                    to_pop.append(init_id)
+                else:
+                    to_pop.append(init_id)
         for init_id in to_pop:
             self.order_table.pop(init_id)
         self._save_state()
 
+    def clean_init_orders(self, strategy_name: str = None):
+        self.clean_orders(state=OrderState.INIT, strategy_name=strategy_name)
+
+    def clean_open_orders(self, strategy_name: str = None):
+        self.clean_orders(state=OrderState.OPEN, strategy_name=strategy_name)
+
+    def clean_filled_orders(self, strategy_name: str = None):
+        self.clean_orders(state=OrderState.FILLED, strategy_name=strategy_name)
+
+    def clean_closed_orders(self, strategy_name: str = None):
+        self.clean_orders(state=OrderState.CLOSED, strategy_name=strategy_name)
+
     def get_orders(self,
-                   strategy_name,
-                   states: list = [OrderState.INIT, OrderState.OPEN, OrderState.FILLED]):
+                   strategy_name: str,
+                   states: list = [OrderState.INIT, OrderState.OPEN, OrderState.FILLED]) -> List[Order]:
         orders = []
         for _, order in self.order_table.items():
             if (order.strategy_name == strategy_name) and (order.state in states):
                 orders.append(order)
         return orders
 
-    def get_order(self, strategy_name, order_number):
+    def get_order(self, strategy_name: str, order_number: str) -> Order:
         for _, order in self.order_table.items():
-            if (order.strategy_name == strategy_name) and (order.order_number == order_number):
-                return order
+            if order.ORDER_STATE != OrderState.INIT:
+                # ORDER_STATE가 init이면 order_number가 없기 때문에 오류가 발생한다. (오류 방지)
+                if (order.strategy_name == strategy_name) and (order.order_number == order_number):
+                    return order
 
 
 if __name__ == '__main__':
-    from order.api import Order
+    from core.order import Order
 
     # o = Order('strategy', 'symbol', 1, 100, 'LONG', 'LIMIT', '신한')
     # oo = Order('strategy', 'symbol', 1, 100, 'LONG', 'LIMIT', '신한')

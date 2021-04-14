@@ -4,11 +4,12 @@ import pickle
 import hashlib
 import datetime
 
-CACHE_DIR = '.\\order_cache'
+CACHE_DIR = 'order/order_cache'
 
 class OrderState:
     INIT = 'init'
     OPEN = 'open'
+    CLOSED = 'closed'
     FILLED = 'filled'
 
 
@@ -21,7 +22,7 @@ class Order:
     상태가 변할때마다 사용할 수 있는 property의 수가 늘어난다.
     """
 
-    def __init__(self, strategy_name, symbol, price, quantity, side, order_type, meta=None, position_amount=None):
+    def __init__(self, strategy_name, symbol, price, quantity, side, order_type, meta=None):
         if not os.path.exists(CACHE_DIR):
             os.mkdir(CACHE_DIR)
 
@@ -36,12 +37,6 @@ class Order:
         self.order_type = order_type
         self.meta = meta
 
-        if position_amount is None:
-            # 실투자 금액
-            self.position_amount = price * quantity
-        else:
-            self.position_amount = position_amount
-
         self.hash = self.make_order_hash(symbol=symbol,
                                          quantity=quantity,
                                          price=price,
@@ -52,6 +47,7 @@ class Order:
         # state별 id값
         self.init_id = None
         self.open_id = None
+        self.closed_id = None
         self.filled_id = None
 
         self.init_id = self.id
@@ -96,6 +92,13 @@ class Order:
 
         # property를 모두 업데이트하고 state의 id 부여하기
         self.open_id = self.id
+        self._save_state()
+
+    def make_closed_order(self):
+        self.ORDER_STATE = OrderState.CLOSED
+        self.closed_time = self._time()
+
+        self.closed_id = self.id
         self._save_state()
 
     def make_filled_order(self):
@@ -155,28 +158,28 @@ if __name__ == '__main__':
 
     print(o.id)
 
-    o.make_open_order('123123')
-    print(o.state)
-    print(o.__dict__)
-
-    print(o.id)
-
-    filled = o.fill_order(0.5, return_filled=True)
-    if filled:
-        o.make_filled_order()
-
-    filled = o.fill_order(0.5, return_filled=True)
-    if filled:
-        o.make_filled_order()
-
-    print(o.state)
-    print(o.__dict__)
-
-    print(o.id)
-
-
-    order_init_id = o.init_id
-
-    order = load_cached_order(order_init_id)
-    print(order)
+    # o.make_open_order('123123')
+    # print(o.state)
+    # print(o.__dict__)
+    #
+    # print(o.id)
+    #
+    # filled = o.fill_order(0.5, return_filled=True)
+    # if filled:
+    #     o.make_filled_order()
+    #
+    # filled = o.fill_order(0.5, return_filled=True)
+    # if filled:
+    #     o.make_filled_order()
+    #
+    # print(o.state)
+    # print(o.__dict__)
+    #
+    # print(o.id)
+    #
+    #
+    # order_init_id = o.init_id
+    #
+    # order = load_cached_order(order_init_id)
+    # print(order)
 
