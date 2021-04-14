@@ -17,7 +17,7 @@ class Order:
     """
     주문 프로세스에 따라서 Order의 상태가 변하게 된다.
 
-    init --> open --> filled
+    init --> open --> filled --> closed
 
     상태가 변할때마다 사용할 수 있는 property의 수가 늘어난다.
     """

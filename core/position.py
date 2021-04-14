@@ -24,7 +24,7 @@ class Position:
     def open_position(self, side, price, quantity, position_amount):
         self.POSITION_STATE = PositionState.OPEN
         self.position_open_date = datetime.datetime.now().strftime('%Y%m%d')
-        self.side = side if side is not None else ''                                      # LONG / SHORT
+        self.side = side if side is not None else ''                                      # BUY / SELL
         self.average_price = price if price is not None else 0                            # 평균단가 (주식/계약 가격)
         self.quantity = quantity if quantity is not None else 0                           # 투자수량
         self.position_amount = position_amount if position_amount is not None else 0      # 투자금액

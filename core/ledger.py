@@ -56,6 +56,9 @@ class Ledger:
     def register_order(self, order_number, order_hash):
         return self.order_table.make_open_order(order_hash=order_hash, order_number=order_number)
 
+    def cancel_order(self, strategy_name, order_number):
+        pass
+
     def fill_order(self, strategy_name, order_number, price, quantity, position_amount=None):
         order = self.order_table.fill_order(strategy_name=strategy_name,
                                             order_number=order_number,

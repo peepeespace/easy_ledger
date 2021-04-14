@@ -3,22 +3,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, String, Integer, Float, ForeignKey
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship
 
-DATABASE_URL = "sqlite:///./test.db"
+DATABASE_URL = "sqlite:///./ledger.db"
 
 engine = create_engine(
     DATABASE_URL, connect_args={"check_same_thread": False}
 )
 Base = declarative_base()
-
-
-class OrderQueue(Base):
-    __tablename__ = 'order_queue'
-
-    id = Column(Integer, primary_key=True)
-    queue = Column(String, nullable=True)
-
-    def __repr__(self):
-        return self.id
 
 
 class Strategy(Base):
@@ -27,6 +17,9 @@ class Strategy(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=True)
     orders = relationship('Order')
+
+    def __repr__(self):
+        return self.name
 
 
 class Order(Base):
@@ -53,7 +46,7 @@ class Order(Base):
     fill_history = relationship('Fill')
 
     def __repr__(self):
-        return f'{self.strategy_name} [{self.ORDER_STATE}] {self.init_id}'
+        return f'{self.strategy_id}: [{self.ORDER_STATE}] {self.hash}'
 
 
 class Fill(Base):
@@ -63,9 +56,11 @@ class Fill(Base):
     order_id = Column(Integer, ForeignKey('order.id'))
     timestamp = Column(String, nullable=True)
     quantity = Column(Float, nullable=True)
+    price = Column(Float, nullable=True)
 
     def __repr__(self):
         return f'{self.order_id} - {self.id} {self.timestamp} {self.quantity}'
+
 
 if __name__ == '__main__':
     Base.metadata.create_all(engine)
@@ -73,8 +68,12 @@ if __name__ == '__main__':
     session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
     s = session()
 
+    sample_strategies = [
+        Strategy(name='st_1')
+    ]
+
     sample_orders = [
-        Order(ORDER_STATE='state', init_time='234234', strategy_name='st_1')
+        Order(strategy_id=1, symbol='005930', quantity=50)
     ]
 
     sample_fills = [
@@ -82,10 +81,11 @@ if __name__ == '__main__':
         Fill(order_id=1, timestamp='23423', quantity=1)
     ]
 
+    s.bulk_save_objects(sample_strategies)
     s.bulk_save_objects(sample_orders)
     s.bulk_save_objects(sample_fills)
     s.commit()
 
-    orders = s.query(Order).all()
+    orders = s.query(Strategy).all()
 
     print(orders[0])

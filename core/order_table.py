@@ -50,11 +50,23 @@ class OrderTable:
 
         self._save_state()
 
-    def remove_order(self, order_number: str):
+    def remove_order(self, order_number: str, strategy_name: str = None):
         to_del = []
         for init_id, order in self.order_table.items():
-            if order.ORDER_STATE != OrderState.INIT:
-                if order.order_number == order_number:
+            # Condition #1: init 상태가 아닌 주문에 대해서만 적용 (order_number이 필요하기 때문)
+            order_state_condition = (order.ORDER_STATE != OrderState.INIT)
+
+            if order_state_condition:
+                # Condition #2: 주문 번호가 일치하는지 확인
+                order_number_condition = (order.order_number == order_number)
+
+                # Condition #3: strategy_name이 일치하는지 확인
+                if strategy_name is not None:
+                    strategy_name_condition = (order.strategy_name == strategy_name)
+                else:
+                    strategy_name_condition = True
+
+                if order_number_condition and strategy_name_condition:
                     order.make_closed_order()
                     to_del.append(init_id)
 
@@ -97,6 +109,7 @@ class OrderTable:
                 except:
                     # 주문 수량보다 많은 수량을 체결시키려 하면 오류 발생
                     filled = False
+
                 if filled:
                     self.clean_filled_orders()
                 self._save_state()
@@ -110,11 +123,15 @@ class OrderTable:
         """
         to_pop = []
         for init_id, order in self.order_table.items():
-            if order.state == state:
-                if strategy_name is not None and order.strategy_name == strategy_name:
-                    to_pop.append(init_id)
-                else:
-                    to_pop.append(init_id)
+            state_condition = (order.state == state)
+            if strategy_name is not None:
+                strategy_name_condition = (order.strategy_name == strategy_name)
+            else:
+                strategy_name_condition = True
+
+            if state_condition and strategy_name_condition:
+                to_pop.append(init_id)
+
         for init_id in to_pop:
             self.order_table.pop(init_id)
         self._save_state()
