@@ -17,6 +17,8 @@ from db.serializers import (
 
 from db.permissions import IsOwner
 from rest_framework import pagination
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework import generics, permissions
 from rest_framework.filters import SearchFilter, OrderingFilter
 
@@ -49,6 +51,29 @@ class StrategyAPIView(generics.ListAPIView):
     def get_queryset(self, *args, **kwargs):
         queryset = Strategy.objects.all().order_by('id')
         return queryset
+
+
+class StrategyCreateAPIView(APIView):
+    def post(self, request):
+        ledger_id = request.data.get('ledger_id')
+        ledger = Ledger.objects.filter(id=ledger_id).first()
+
+        if request.user != ledger.user:
+            return Response({'fail': 'cannot access ledger. no permission'}, status=400)
+
+        name = request.data.get('name')
+        account_number = request.data.get('account_number')
+        description = request.data.get('description')
+
+        st = Strategy(
+            ledger=ledger_id,
+            name=name,
+            account_number=account_number,
+            description=description
+        )
+        st.save()
+
+        return Response({'success': 'created strategy'}, status=201)
 
 
 # class OrdersAPIView(generics.ListAPIView):
