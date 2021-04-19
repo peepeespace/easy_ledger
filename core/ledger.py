@@ -33,14 +33,35 @@ class Ledger:
     def get_orders(self, strategy_name):
         return self.order_table.get_orders(strategy_name=strategy_name)
 
-    def get_order(self, strategy_name, order_number):
-        return self.order_table.get_order(strategy_name=strategy_name, order_number=order_number).__dict__
+    def get_order(self, strategy_name, order_number, format='dict'):
+        order = self.order_table.get_order(strategy_name=strategy_name, order_number=order_number)
+        if order is not None:
+            if format == 'dict':
+                return order.__dict__
+            else:
+                return order
+
+    def clean_orders(self, state, strategy_name=None):
+        self.order_table.clean_orders(state=state, strategy_name=strategy_name)
 
     def get_positions(self, strategy_name):
         return self.position_table.get_positions(strategy_name=strategy_name)
 
-    def get_position(self, strategy_name, symbol):
-        return self.position_table.get_position(strategy_name=strategy_name, symbol=symbol).__dict__
+    def get_position(self, strategy_name, symbol, format='dict'):
+        position = self.position_table.get_position(strategy_name=strategy_name, symbol=symbol)
+        if format == 'dict':
+            return position.__dict__
+        else:
+            return position
+
+    def update_position(self, strategy_name, symbol, side, price, quantity, position_amount=None, order_state=None):
+        self.position_table.update_position(strategy_name=strategy_name,
+                                            symbol=symbol,
+                                            side=side,
+                                            price=price,
+                                            quantity=quantity,
+                                            position_amount=position_amount,
+                                            order_state=order_state)
 
     def init_order(self, strategy_name, symbol, price, quantity, side, order_type, meta=None):
         order = Order(strategy_name=strategy_name,
@@ -56,8 +77,8 @@ class Ledger:
     def register_order(self, order_number, order_hash):
         return self.order_table.make_open_order(order_hash=order_hash, order_number=order_number)
 
-    def cancel_order(self, strategy_name, order_number):
-        pass
+    def cancel_order(self, order_number):
+        return self.order_table.remove_order(order_number=order_number)
 
     def fill_order(self, strategy_name, order_number, price, quantity, position_amount=None):
         order = self.order_table.fill_order(strategy_name=strategy_name,
@@ -70,7 +91,8 @@ class Ledger:
                                             side=order_base_info['side'],
                                             price=price,
                                             quantity=quantity,
-                                            position_amount=position_amount)
+                                            position_amount=position_amount,
+                                            order_state=order.ORDER_STATE)
 
 
 if __name__ == '__main__':
@@ -78,7 +100,7 @@ if __name__ == '__main__':
 
     ledger = Ledger()
 
-    ledger.update_holding(strategy_name, 'cash', 1000)
+    ledger.update_cash(strategy_name, 'cash', 1000)
 
     order_params = {
         'strategy_name': strategy_name,

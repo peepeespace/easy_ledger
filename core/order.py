@@ -1,10 +1,7 @@
-import os
 import json
-import pickle
 import hashlib
 import datetime
 
-CACHE_DIR = 'order/order_cache'
 
 class OrderState:
     INIT = 'init'
@@ -17,28 +14,25 @@ class Order:
     """
     주문 프로세스에 따라서 Order의 상태가 변하게 된다.
 
-    init --> open --> filled --> closed
+    init --> open --> filled
 
     상태가 변할때마다 사용할 수 있는 property의 수가 늘어난다.
     """
 
     def __init__(self, strategy_name, symbol, price, quantity, side, order_type, meta=None):
-        if not os.path.exists(CACHE_DIR):
-            os.mkdir(CACHE_DIR)
-
         self.ORDER_STATE = OrderState.INIT
         self.init_time = self._time()
 
         self.strategy_name = strategy_name
         self.symbol = symbol
-        self.quantity = quantity
+        self.quantity = abs(quantity)
         self.price = price
         self.side = side
         self.order_type = order_type
         self.meta = meta
 
         self.hash = self.make_order_hash(symbol=symbol,
-                                         quantity=quantity,
+                                         quantity=abs(quantity),
                                          price=price,
                                          side=side,
                                          order_type=order_type,
@@ -51,12 +45,6 @@ class Order:
         self.filled_id = None
 
         self.init_id = self.id
-        self._save_state()
-
-    def _save_state(self):
-        filename = f'{CACHE_DIR}\\order_{self.init_id}.pkl'
-        with open(filename, 'wb') as f:
-            pickle.dump(self, f)
 
     def _time(self):
         return datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3]
@@ -92,14 +80,12 @@ class Order:
 
         # property를 모두 업데이트하고 state의 id 부여하기
         self.open_id = self.id
-        self._save_state()
 
     def make_closed_order(self):
         self.ORDER_STATE = OrderState.CLOSED
         self.closed_time = self._time()
 
         self.closed_id = self.id
-        self._save_state()
 
     def make_filled_order(self):
         self.ORDER_STATE = OrderState.FILLED
@@ -107,15 +93,16 @@ class Order:
 
         # property를 모두 업데이트하고 state의 id 부여하기
         self.filled_id = self.id
-        self._save_state()
 
     def fill_order(self, quantity, return_filled=False):
+        """
+        양수 수량만큼만 체결시킬 수 있기 때문에 양수/음수 모두 절대값으로 취해준 후에 업데이트한다.
+        """
         if quantity > self.orders_remaining:
             raise Exception('체결 수량이 남은 수량보다 클 수 없습니다. 다시 확인바랍니다.')
-        self.orders_filled += quantity
-        self.orders_remaining -= quantity
-        self.fill_history.append({'timestamp': self._time(), 'quantity': quantity})
-        self._save_state()
+        self.orders_filled += abs(quantity)
+        self.orders_remaining -= abs(quantity)
+        self.fill_history.append({'timestamp': self._time(), 'quantity': abs(quantity)})
 
         if self.filled:
             self.make_filled_order()
@@ -145,12 +132,6 @@ class Order:
             return False
 
 
-def load_cached_order(order_init_id):
-    with open(f'{CACHE_DIR}\\order_{order_init_id}.pkl', 'rb') as f:
-        order = pickle.load(f)
-    return order
-
-
 if __name__ == '__main__':
     o = Order('strategy', 'symbol', 1, 100, 'BUY', 'LIMIT', '신한')
     print(o.state)
@@ -158,28 +139,25 @@ if __name__ == '__main__':
 
     print(o.id)
 
-    # o.make_open_order('123123')
-    # print(o.state)
-    # print(o.__dict__)
-    #
-    # print(o.id)
-    #
-    # filled = o.fill_order(0.5, return_filled=True)
-    # if filled:
-    #     o.make_filled_order()
-    #
-    # filled = o.fill_order(0.5, return_filled=True)
-    # if filled:
-    #     o.make_filled_order()
-    #
-    # print(o.state)
-    # print(o.__dict__)
-    #
-    # print(o.id)
-    #
-    #
-    # order_init_id = o.init_id
-    #
-    # order = load_cached_order(order_init_id)
-    # print(order)
+    o.make_open_order('123123')
+    print(o.state)
+    print(o.__dict__)
+
+    print(o.id)
+
+    filled = o.fill_order(0.5, return_filled=True)
+    if filled:
+        o.make_filled_order()
+
+    filled = o.fill_order(0.5, return_filled=True)
+    if filled:
+        o.make_filled_order()
+
+    print(o.state)
+    print(o.__dict__)
+
+    print(o.id)
+
+
+    order_init_id = o.init_id
 

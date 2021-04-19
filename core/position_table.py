@@ -38,10 +38,12 @@ class PositionTable:
 
         return positions[symbol]
 
-    def update_position(self, strategy_name, symbol, side, price, quantity, position_amount):
+    def update_position(self, strategy_name, symbol, side, price, quantity, position_amount, order_state=None):
         position = self.get_position(strategy_name, symbol)
         if position.POSITION_STATE == PositionState.CLOSED:
-            position.open_position(side=side, price=price, quantity=quantity, position_amount=position_amount)
+            position.open_position(side=side, price=price, quantity=quantity,
+                                   position_amount=position_amount, order_state=order_state)
         else:
-            position.update_position(price=price, quantity=quantity, position_amount=position_amount)
+            position.update_position(price=price, quantity=quantity, position_amount=position_amount,
+                                     order_state=order_state)
         self._save_state()

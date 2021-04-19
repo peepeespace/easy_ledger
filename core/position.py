@@ -1,5 +1,7 @@
 import datetime
 
+from core.order import OrderState
+
 
 class PositionState:
     OPEN = 'open'
@@ -19,9 +21,12 @@ class Position:
             if self.trade_history[i] == 'ENTER':
                 pq += self.price_history[i] * self.quantity_history[i]
                 q += self.quantity_history[i]
-        return pq / q
+        if q == 0:
+            return 0
+        else:
+            return pq / q
 
-    def open_position(self, side, price, quantity, position_amount):
+    def open_position(self, side, price, quantity, position_amount, order_state: OrderState = None):
         self.POSITION_STATE = PositionState.OPEN
         self.position_open_date = datetime.datetime.now().strftime('%Y%m%d')
         self.side = side if side is not None else ''                                      # BUY / SELL
@@ -36,17 +41,22 @@ class Position:
         self.price_history = [price] if price is not None else []
         self.quantity_history = [quantity] if quantity is not None else []
         self.trade_history = ['ENTER'] if quantity is not None else []
+        self.fill_history = [order_state == OrderState.FILLED] # 몇차 거래인지 파악하기 위한 수단
 
-    def update_position(self, price, quantity, position_amount=None):
+    def update_position(self, price, quantity, position_amount=None, order_state=None):
         """
         quantity, amount는 +/- 모두 가능
         """
         self.price_history.append(price)
         self.quantity_history.append(quantity)
+        self.fill_history.append(order_state == OrderState.FILLED)
 
         self.quantity += quantity
         if position_amount is None:
-            self.position_amount += (price * quantity)
+            amount = price * quantity
+            if self.side == 'SELL':
+                amount = -1 * amount
+            self.position_amount += amount
         else:
             self.position_amount += position_amount
 
@@ -65,7 +75,11 @@ class Position:
         self.trade_history.append(trade_position)
         self.average_price = self.calculate_average_price()
 
-        self.leverage = abs((self.average_price * self.quantity) / self.position_amount)
+        try:
+            self.leverage = abs((self.average_price * self.quantity) / self.position_amount)
+        except:
+            self.leverage = 0
+
         self.close_position()
 
     def close_position(self):
@@ -84,6 +98,7 @@ class Position:
             self.price_history = []
             self.quantity_history = []
             self.trade_history = []
+            self.fill_history = []
 
     @property
     def position_enter_cnt(self):
@@ -92,6 +107,18 @@ class Position:
     @property
     def position_exit_cnt(self):
         return self.trade_history.count('EXIT')
+
+    @property
+    def fill_cnt(self):
+        """
+        fill_cnt가 필요한 이유는: 한 주문에 대해서 여러번에 걸쳐서 체결이 되는 경우 한번의 거래로 보기 때문이다.
+        여러번 체결을 하였더라도 같은 주문에 대한 체결이면 fill_cnt로 정확히 몇번의 주문을 통해서 position이 생긴건지
+        파악하기 위해서 필요하다.
+        """
+        try:
+            return self.fill_history.count(True)
+        except:
+            return 0
 
 
 if __name__ == '__main__':
