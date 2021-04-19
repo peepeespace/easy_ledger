@@ -80,7 +80,7 @@ class Order(models.Model):
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f'{self.strategy.name} {self.symbol} {self.price} {self.quantity} [{self.created}]'
+        return f'{self.strategy_name} {self.symbol} {self.price} {self.quantity} [{self.created}]'
 
 
 class Fill(models.Model):
@@ -115,7 +115,7 @@ class Position(models.Model):
     borrow_amount = models.FloatField(blank=True, null=True)
 
     def __str__(self):
-        return f'{self.strategy.name} {self.symbol} {self.side} {self.quantity}'
+        return f'{self.strategy_name} {self.symbol} {self.side} {self.quantity}'
 
 
 class Universe(models.Model):
