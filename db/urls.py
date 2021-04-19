@@ -1,6 +1,10 @@
 from django.urls import path
-from db.views import HelloView
+from db.views import (
+    LedgerAPIView,
+    StrategyAPIView,
+)
 
 urlpatterns = [
-    path('hello/', HelloView.as_view(), name='hello'),
+    path('ledger/', LedgerAPIView.as_view(), name='ledger'),
+    path('strategy/', StrategyAPIView.as_view(), name='strategy'),
 ]

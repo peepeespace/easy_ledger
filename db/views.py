@@ -30,7 +30,7 @@ class StandardResultPagination(pagination.PageNumberPagination):
 class LedgerAPIView(generics.ListCreateAPIView):
     queryset = Ledger.objects.all()
     serializer_class = LedgerSerializer
-    permission_classes = (IsOwner,)
+    permission_classes = (permissions.IsAuthenticated,)
     pagination_class = StandardResultPagination
     filter_backends = [SearchFilter, OrderingFilter]
 
@@ -39,7 +39,7 @@ class LedgerAPIView(generics.ListCreateAPIView):
         return queryset
 
 
-class StrategyAPIView(generics.ListCreateAPIView):
+class StrategyAPIView(generics.ListAPIView):
     queryset = Strategy.objects.all()
     serializer_class = StrategySerializer
     permission_classes = (permissions.IsAuthenticated,)

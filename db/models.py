@@ -58,7 +58,7 @@ class Strategy(models.Model):
 class Order(models.Model):
     user = models.ForeignKey(UserProfile,
                              on_delete=models.CASCADE,
-                             related_name='universe')
+                             related_name='orders')
     strategy_name = models.CharField(max_length=150)
     order_state = models.CharField(max_length=6, choices=ORDER_STATE_CHOICES, blank=True, null=True)
     init_time = models.CharField(max_length=25, blank=True, null=True)
@@ -103,7 +103,7 @@ class Fill(models.Model):
 class Position(models.Model):
     user = models.ForeignKey(UserProfile,
                              on_delete=models.CASCADE,
-                             related_name='universe')
+                             related_name='positions')
     strategy_name = models.CharField(max_length=150)
     position_state = models.CharField(max_length=6, choices=POSITION_STATE_CHOICES, blank=True, null=True)
     symbol = models.CharField(max_length=30, blank=True, null=True)
