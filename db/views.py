@@ -41,7 +41,13 @@ class LedgerAPIView(generics.ListCreateAPIView):
         return queryset
 
 
-class StrategyAPIView(generics.ListAPIView):
+class LedgerDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Ledger.objects.all()
+    serializer_class = LedgerSerializer
+    permission_classes = (IsOwner,)
+
+
+class StrategyAPIView(generics.ListCreateAPIView):
     queryset = Strategy.objects.all()
     serializer_class = StrategySerializer
     permission_classes = (permissions.IsAuthenticated,)
@@ -51,29 +57,6 @@ class StrategyAPIView(generics.ListAPIView):
     def get_queryset(self, *args, **kwargs):
         queryset = Strategy.objects.all().order_by('id')
         return queryset
-
-
-class StrategyCreateAPIView(APIView):
-    def post(self, request):
-        ledger_id = request.data.get('ledger_id')
-        ledger = Ledger.objects.filter(id=ledger_id).first()
-
-        if request.user != ledger.user:
-            return Response({'fail': 'cannot access ledger. no permission'}, status=400)
-
-        name = request.data.get('name')
-        account_number = request.data.get('account_number')
-        description = request.data.get('description')
-
-        st = Strategy(
-            ledger=ledger_id,
-            name=name,
-            account_number=account_number,
-            description=description
-        )
-        st.save()
-
-        return Response({'success': 'created strategy'}, status=201)
 
 
 # class OrdersAPIView(generics.ListAPIView):

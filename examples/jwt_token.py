@@ -19,8 +19,8 @@ header = {
     'Authorization': f'Bearer {access_token}'
 }
 
-res = requests.get('http://127.0.0.1:8000/api/history/hello/', headers=header)
-print(res.json())
+# res = requests.get('http://127.0.0.1:8000/api/history/hello/', headers=header)
+# print(res.json())
 
 
 # Refresh token
