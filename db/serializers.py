@@ -8,6 +8,7 @@ from db.models import (
     Universe,
 )
 
+
 class LedgerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ledger
