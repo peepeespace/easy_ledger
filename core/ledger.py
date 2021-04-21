@@ -77,8 +77,17 @@ class Ledger:
     def register_order(self, order_number, order_hash):
         return self.order_table.make_open_order(order_hash=order_hash, order_number=order_number)
 
-    def cancel_order(self, order_number):
-        return self.order_table.remove_order(order_number=order_number)
+    def cancel_order(self, strategy_name, order_number):
+        orders = self.order_table.remove_order(strategy_name=strategy_name, order_number=order_number)
+        for order in orders:
+            order_base_info = order.order_base_info
+            self.position_table.update_position(strategy_name=strategy_name,
+                                                symbol=order_base_info['symbol'],
+                                                side=order_base_info['side'],
+                                                price=0.0,
+                                                quantity=0.0,
+                                                position_amount=0.0,
+                                                order_state=order.ORDER_STATE)
 
     def fill_order(self, strategy_name, order_number, price, quantity, position_amount=None):
         order = self.order_table.fill_order(strategy_name=strategy_name,

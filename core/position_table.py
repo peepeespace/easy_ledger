@@ -8,11 +8,12 @@ class PositionTable:
 
     CACHE_NAME = 'PositionTable.pkl'
 
-    def __init__(self):
+    def __init__(self, auto_save=False):
+        self.auto_save = auto_save
         self._load_state()
 
     def _load_state(self):
-        if os.path.exists(self.CACHE_NAME):
+        if os.path.exists(self.CACHE_NAME) and self.auto_save:
             f = open(self.CACHE_NAME, 'rb')
             cached = pickle.load(f)
             self.position_table = cached.position_table
@@ -21,8 +22,9 @@ class PositionTable:
             self._save_state()
 
     def _save_state(self):
-        with open(self.CACHE_NAME, 'wb') as f:
-            pickle.dump(self, f)
+        if self.auto_save:
+            with open(self.CACHE_NAME, 'wb') as f:
+                pickle.dump(self, f)
 
     def get_positions(self, strategy_name):
         if strategy_name not in self.position_table:

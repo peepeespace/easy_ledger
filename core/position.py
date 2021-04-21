@@ -78,7 +78,8 @@ class Position:
         self.price_history = [price] if price is not None else []
         self.quantity_history = [quantity] if quantity is not None else []
         self.trade_history = ['ENTER'] if quantity is not None else []
-        self.fill_history = [order_state == OrderState.FILLED] # 몇차 거래인지 파악하기 위한 수단
+        self.fill_history = [(order_state == OrderState.FILLED) or \
+                             (order_state == OrderState.CLOSED)] # 몇차 거래인지 파악하기 위한 수단
 
     def update_position(self,
                         price: float = 0.0,
@@ -88,11 +89,12 @@ class Position:
         """
         quantity, amount는 +/- 모두 가능
 
-        실제로 fill된 주문에 대해서만 fill_history에 기록한다. (체결완료 / 주문취소 두가지 경우에 가능)
+        실제로 fill/close된 주문에 대해서만 fill_history에 기록한다. (체결완료 / 주문취소 두가지 경우에 가능)
         """
         self.price_history.append(price)
         self.quantity_history.append(quantity)
-        self.fill_history.append(order_state == OrderState.FILLED)
+        self.fill_history.append((order_state == OrderState.FILLED) or \
+                                 (order_state == OrderState.CLOSED))
 
         self.average_price = self.update_average_price(prev_average_price=self.average_price,
                                                        prev_quantity=self.quantity,
