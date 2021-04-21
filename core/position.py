@@ -10,10 +10,15 @@ class PositionState:
 
 class Position:
 
-    def __init__(self, strategy_name: str, symbol: str, meta: str = None):
+    def __init__(self,
+                 strategy_name: str,
+                 symbol: str,
+                 quote: str = None,
+                 meta: str = None):
         self.POSITION_STATE = PositionState.CLOSED
         self.strategy_name = strategy_name
         self.symbol = symbol
+        self.quote = quote
         self.meta = meta
 
     @classmethod

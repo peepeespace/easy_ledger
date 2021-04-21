@@ -24,6 +24,18 @@ POSITION_STATE_CHOICES = [
 ]
 
 
+class ClientSession(models.Model):
+    user = models.ForeignKey(UserProfile,
+                             on_delete=models.CASCADE,
+                             related_name='sessions')
+    timestamp = models.CharField(max_length=25, blank=True, null=True)
+    is_authenticated = models.BooleanField(default=False, blank=True, null=True)
+    session_id = models.CharField(max_length=100, blank=True, null=True)
+
+    def __str__(self):
+        return f'[User ID: {self.user.id}] {self.session_id}'
+
+
 class Ledger(models.Model):
     """
     여러 Ledger가 존재할 수 있다.
@@ -67,12 +79,15 @@ class Order(models.Model):
     price = models.FloatField(blank=True, null=True)
     side = models.CharField(max_length=1, choices=SIDE_CHOICES, blank=True, null=True)
     order_type = models.CharField(max_length=1, choices=ORDER_TYPE_CHOICES, blank=True, null=True)
+    quote = models.CharField(max_length=100, blank=True, null=True)
     meta = models.CharField(max_length=100, blank=True, null=True)
     hash = models.CharField(max_length=100, blank=True, null=True)
     init_id = models.CharField(max_length=100, blank=True, null=True)
     open_id = models.CharField(max_length=100, blank=True, null=True)
     filled_id = models.CharField(max_length=100, blank=True, null=True)
+    closed_id = models.CharField(max_length=100, blank=True, null=True)
     open_time = models.CharField(max_length=25, blank=True, null=True)
+    closed_time = models.CharField(max_length=25, blank=True, null=True)
     order_number = models.CharField(max_length=25, blank=True, null=True)
     orders_filled = models.FloatField(blank=True, null=True)
     orders_remaining = models.FloatField(blank=True, null=True)
@@ -80,7 +95,7 @@ class Order(models.Model):
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f'{self.strategy_name} {self.symbol} {self.price} {self.quantity} [{self.created}]'
+        return f'{self.strategy_name} {self.symbol} {self.price} {self.quote} {self.quantity} [{self.created}]'
 
 
 class Fill(models.Model):
@@ -107,6 +122,7 @@ class Position(models.Model):
     strategy_name = models.CharField(max_length=150)
     position_state = models.CharField(max_length=6, choices=POSITION_STATE_CHOICES, blank=True, null=True)
     symbol = models.CharField(max_length=30, blank=True, null=True)
+    quote = models.CharField(max_length=100, blank=True, null=True)
     meta = models.CharField(max_length=100, blank=True, null=True)
     side = models.CharField(max_length=1, choices=SIDE_CHOICES, blank=True, null=True)
     quantity = models.FloatField(blank=True, null=True)

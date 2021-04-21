@@ -106,7 +106,7 @@ class OrderTable:
             order.make_open_order(order_number)
             self.order_table[order.init_id] = order
         self._save_state()
-        return order.strategy_name
+        return order
 
     def fill_order(self, strategy_name, order_number, quantity, return_order=False):
         for _, order in self.order_table.items():

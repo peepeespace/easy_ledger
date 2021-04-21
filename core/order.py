@@ -19,7 +19,7 @@ class Order:
     상태가 변할때마다 사용할 수 있는 property의 수가 늘어난다.
     """
 
-    def __init__(self, strategy_name, symbol, price, quantity, side, order_type, meta=None):
+    def __init__(self, strategy_name, symbol, price, quantity, side, order_type, quote=None, meta=None):
         self.ORDER_STATE = OrderState.INIT
         self.init_time = self._time()
 
@@ -29,6 +29,7 @@ class Order:
         self.price = price
         self.side = side
         self.order_type = order_type
+        self.quote = quote
         self.meta = meta
 
         self.hash = self.make_order_hash(symbol=symbol,
@@ -36,6 +37,7 @@ class Order:
                                          price=price,
                                          side=side,
                                          order_type=order_type,
+                                         quote=quote,
                                          meta=meta)
 
         # state별 id값
@@ -50,7 +52,7 @@ class Order:
         return datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3]
 
     @classmethod
-    def make_order_hash(self, symbol, price, quantity, side, order_type, meta):
+    def make_order_hash(self, symbol, price, quantity, side, order_type, quote, meta):
         """
         모든 주문을 잘 구분하기 위한 요소만 사용하여 hash를 한다.
         주문에 대한 모든 정보는 OrderHash 객체로 관리하는 것이 편리하다.
@@ -64,9 +66,10 @@ class Order:
             'price': price,
             'side': side,
             'order_type': order_type,
+            'quote': quote,
             'meta': meta
         }
-        order_info_string = f'{symbol} {price} {quantity} {side} {order_type} {meta}'
+        order_info_string = f'{symbol} {price} {quantity} {side} {order_type} {quote} {meta}'
         return hashlib.sha1(order_info_string.encode('utf-8')).hexdigest()
 
     def make_open_order(self, order_number):
@@ -133,7 +136,7 @@ class Order:
 
 
 if __name__ == '__main__':
-    o = Order('strategy', 'symbol', 1, 100, 'BUY', 'LIMIT', '신한')
+    o = Order('strategy', 'symbol', 1, 100, 'BUY', 'LIMIT', 'KRW', '신한')
     print(o.state)
     print(o.__dict__)
 

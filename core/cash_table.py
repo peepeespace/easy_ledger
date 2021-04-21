@@ -28,27 +28,27 @@ class CashTable:
             with open(self.CACHE_NAME, 'wb') as f:
                 pickle.dump(self, f)
 
-    def get_cash(self, strategy_name, meta=None):
+    def get_cash(self, strategy_name, quote=None):
         if strategy_name not in self.cash_table:
             self.cash_table[strategy_name] = {}
 
-        if meta is None:
+        if quote is None:
             return self.cash_table[strategy_name]
         else:
-            return self.cash_table[strategy_name].get(meta, 0)
+            return self.cash_table[strategy_name].get(quote, 0)
 
-    def update_cash(self, strategy_name, amount, meta=None):
+    def update_cash(self, strategy_name, amount, quote=None):
         cash_info = self.get_cash(strategy_name)
 
-        if meta is None:
+        if quote is None:
             cash_info['cash'] = amount
         else:
-            cash_info[meta] = amount
+            cash_info[quote] = amount
 
         self._save_state()
 
 
 if __name__ == '__main__':
-    ct = CashTable(auto_save=True)
+    ct = CashTable()
     cash = ct.get_cash('strategy_1')
     print(cash)
