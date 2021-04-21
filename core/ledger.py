@@ -11,10 +11,12 @@ class Ledger:
     실제 주문 발생과 같은 역할은 모두 외부에서 발생시키며, 원장은 철저히 데이터 관리에만 집중한다.
     """
 
-    def __init__(self):
-        self.cash_table = CashTable()
-        self.order_table = OrderTable()
-        self.position_table = PositionTable()
+    def __init__(self, name, auto_save=False):
+        self.name = name
+
+        self.cash_table = CashTable(name, auto_save)
+        self.order_table = OrderTable(name, auto_save)
+        self.position_table = PositionTable(name, auto_save)
 
     def order_hash(self, symbol, price, quantity, side, order_type, meta):
         return Order.make_order_hash(symbol=symbol,
