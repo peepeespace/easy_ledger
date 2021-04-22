@@ -5,6 +5,7 @@ from db.models import (
     Fill,
     Position,
     Universe,
+    ExecutionSession,
 )
 from db.serializers import (
     LedgerSerializer,
@@ -13,6 +14,7 @@ from db.serializers import (
     FillSerializer,
     PositionSerializer,
     UniverseSerializer,
+    ExecutionSessionSerializer,
 )
 
 from db.permissions import IsOwner

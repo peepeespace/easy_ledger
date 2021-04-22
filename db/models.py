@@ -47,6 +47,28 @@ class ClientSession(models.Model):
         return f'[User ID: {self.user.id}] {self.session_id}'
 
 
+class ExecutionSession(models.Model):
+    """
+    Client는 meta로 어떤 거래소/증권사를 execution engine으로 사용할지 설정한다.
+    (예: 이베스트, 신한 등)
+    """
+    user = models.ForeignKey(User,
+                             on_delete=models.CASCADE,
+                             related_name='execution_sessions')
+    meta = models.CharField(max_length=100, blank=True, null=True)
+    account_number = models.CharField(max_length=100, blank=True, null=True)
+    account_password = models.CharField(max_length=100, blank=True, null=True)
+    public_key = models.CharField(max_length=150, blank=True, null=True)
+    private_key = models.CharField(max_length=150, blank=True, null=True)
+    execution_port = models.IntegerField(blank=True, null=True) # 주문을 넣는 포트
+    account_port = models.IntegerField(blank=True, null=True)   # 결과값 (주문접수, 저문체결, 주문취소 등) 받는 포트
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'[User ID: {self.user.id}] {self.meta} {self.execution_port} {self.account_port}'
+
+
 class Ledger(models.Model):
     """
     여러 Ledger가 존재할 수 있다.

@@ -6,6 +6,7 @@ from db.models import (
     Fill,
     Position,
     Universe,
+    ExecutionSession,
 )
 
 
@@ -42,4 +43,10 @@ class PositionSerializer(serializers.ModelSerializer):
 class UniverseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Universe
+        fields = '__all__'
+
+
+class ExecutionSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExecutionSession
         fields = '__all__'

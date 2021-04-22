@@ -132,5 +132,17 @@ class LedgerRESTClient:
 if __name__ == '__main__':
     c = LedgerRESTClient('ppark9553@naver.com', '123123!!')
 
-    for msg in ['hello', 'bye', 'what', 'the', 'heck']:
-        c.send('ping')
+    ledger_name = 'my_first_ledger_1'
+    strategy_name = 'strat_1'
+
+    base = {'ledger_name': ledger_name, 'strategy_name': strategy_name}
+
+    c.send('ledger', method='add_ledger', params={'ledger_name': ledger_name})
+    c.send('ledger', method='get_cash', params={**base})
+    # c.send('ledger', method='update_cash', params={'ledger_name': ledger_name, 'strategy_name': strategy_name, 'amount': 1000})
+    # c.send('ledger', method='get_cash', params={'ledger_name': ledger_name, 'strategy_name': strategy_name})
+    # c.send('ledger', method='get_orders', params={'ledger_name': ledger_name, 'strategy_name': strategy_name})
+
+    c.send('ledger', method='get_position', params={**base, 'symbol': '005930'})
+    # c.send('ledger', method='update_position', params={**base, 'symbol': '005930', 'side': 'BUY', 'price': 100, 'quantity': 12, 'position_amount': 100, 'order_state': 'filled'})
+    # c.send('ledger', method='get_position', params={**base, 'symbol': '005930'})
