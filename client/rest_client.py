@@ -1,23 +1,33 @@
+import json
+import asyncio
 import requests
 import threading
+import websockets
+from cryptography.fernet import Fernet
+from multiprocessing import Queue, Process
 
 
 class LedgerRESTClient:
 
     def __init__(self, email, password, server_host='127.0.0.1'):
+        self.queue = Queue()
+
         self.email = email
         self.password = password
 
         self.server_host = f'http://{server_host}:8000'
 
         self.minutes_passed = 0
-        self._auto_token_refresh()
+        # self._auto_token_refresh()
+
+        p = Process(target=self.websocket_connection_process, args=(self.queue,))
+        p.start()
 
     def _auto_token_refresh(self):
         if self.minutes_passed % 5 == 0:
             self.login()
         else:
-            self.refresh_token()
+            self._refresh_token()
 
         self.minutes_passed += 1
 
@@ -40,7 +50,7 @@ class LedgerRESTClient:
         else:
             raise Exception('login failed')
 
-    def refresh_token(self):
+    def _refresh_token(self):
         params = {
             'refresh': self.refresh_token
         }
@@ -64,8 +74,63 @@ class LedgerRESTClient:
         if res.status_code == 200:
             return res.json()
 
+    #=== Websocket Related ===#
+    def send(self, data_type, **kwargs):
+        self.queue.put({
+            'type': data_type,
+            **kwargs
+        })
+
+    def make_socket_session(self):
+        params = {
+            'username': self.email,
+            'password': self.password
+        }
+        res = requests.post(f'{self.server_host}/api/user/login/', data=params)
+        if res.status_code == 200:
+            return res.json()
+        else:
+            print(res.json())
+            raise Exception('socket session failed')
+
+    def websocket_connection_process(self, queue):
+        session_info = self.make_socket_session()
+        asyncio.get_event_loop().run_until_complete(self.ws_connect(queue, session_info))
+
+    async def ws_connect(self, queue, session_info):
+        async with websockets.connect("ws://localhost:6000/ws") as websocket:
+            user_id = session_info['user']
+            key = session_info['key']
+            result = session_info['result']
+
+            session_str = Fernet(key.encode('utf-8')).encrypt(
+                json.dumps(result).encode('utf-8')
+            )
+            await websocket.send(json.dumps({
+                'type': 'make_connection',
+                'user': user_id,
+                'session': session_str.decode('utf-8')
+            }))
+
+            res = await websocket.recv()
+            res = json.loads(res)
+
+            status = res['status']
+            session_id = res['session_id']
+
+            if status == 'success':
+                while True:
+                    req = queue.get()
+                    req = {**req, 'session_id': session_id}
+                    await websocket.send(json.dumps(req))
+
+                    res = await websocket.recv()
+                    res = json.loads(res)
+                    print(res)
+
 
 if __name__ == '__main__':
-    c = LedgerRESTClient('ppark9553@naver.com', '123123')
-    user = c.get_user()
-    print(user)
+    c = LedgerRESTClient('ppark9553@naver.com', '123123!!')
+
+    for msg in ['hello', 'bye', 'what', 'the', 'heck']:
+        c.send('ping')

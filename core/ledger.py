@@ -59,17 +59,12 @@ class Ledger:
         if self.db_save:
             if self.username is None:
                 self.username = input('[Ledger] Enter Email: ')
-            user = User.objects.filter(email=self.username).first()
-            if user is None:
+            self.user = User.objects.filter(email=self.username).first()
+            if self.user is None:
                 print('[Ledger] No such user. Creating new user...')
                 password = input('[Ledger] Enter New Password: ')
-                user = User(username=self.username, email=self.username, password=password)
-                user.save()
-
-                self.user = UserProfile(user=user)
+                self.user = User(username=self.username, email=self.username, password=password)
                 self.user.save()
-            else:
-                self.user = user.profile
 
             ledger = LedgerModel.objects.filter(name=self.name).first()
             if ledger is None:

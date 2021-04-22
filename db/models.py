@@ -1,5 +1,5 @@
 from django.db import models
-from user.models import UserProfile
+from user.models import User
 
 ORDER_STATE_CHOICES = [
     ('INIT', 'INIT'),
@@ -25,12 +25,23 @@ POSITION_STATE_CHOICES = [
 
 
 class ClientSession(models.Model):
-    user = models.ForeignKey(UserProfile,
+    """
+    Websocket 서버에서 필요한 유저 id, timestamp, refresh token, access token으로 만든 session_id 저장
+
+    - 한 유저당 한개 connection 허용하기 위해서 user 정보 저장
+    - 세션 시작을 기록하기 위해서 timestamp 저장
+    - 소켓 서버에서 로그인이 되었는지 확인하기 위해서 is_authenticated 저장
+    - 소켓 서버에서 요청 받은 유저 id, timestamp, refresh token, access token으로 hashing한 값이 session_id와 일치하면
+      execution 기능을 활성화해주기 위해서 session_id를 저장
+    - 소켓 통신에서 사용될 encryption method에 사용될 key 저장
+    """
+    user = models.ForeignKey(User,
                              on_delete=models.CASCADE,
                              related_name='sessions')
-    timestamp = models.CharField(max_length=25, blank=True, null=True)
     is_authenticated = models.BooleanField(default=False, blank=True, null=True)
+    timestamp = models.CharField(max_length=25, blank=True, null=True)
     session_id = models.CharField(max_length=100, blank=True, null=True)
+    key = models.CharField(max_length=150, blank=True, null=True)
 
     def __str__(self):
         return f'[User ID: {self.user.id}] {self.session_id}'
@@ -42,7 +53,7 @@ class Ledger(models.Model):
 
     Ledger에 여러 전략이 존재할 수 있는 형식이다.
     """
-    user = models.ForeignKey(UserProfile,
+    user = models.ForeignKey(User,
                              on_delete=models.CASCADE,
                              related_name='ledgers')
     name = models.CharField(max_length=150)
@@ -68,7 +79,7 @@ class Strategy(models.Model):
 
 
 class Order(models.Model):
-    user = models.ForeignKey(UserProfile,
+    user = models.ForeignKey(User,
                              on_delete=models.CASCADE,
                              related_name='orders')
     strategy_name = models.CharField(max_length=150)
@@ -116,7 +127,7 @@ class Fill(models.Model):
 
 
 class Position(models.Model):
-    user = models.ForeignKey(UserProfile,
+    user = models.ForeignKey(User,
                              on_delete=models.CASCADE,
                              related_name='positions')
     strategy_name = models.CharField(max_length=150)
@@ -138,7 +149,7 @@ class Universe(models.Model):
     """
     관심 종목 (실제 트레이딩할 때 사용하게 될 유니버스 + 관심 종목으로 만들어진 유니버스)
     """
-    user = models.ForeignKey(UserProfile,
+    user = models.ForeignKey(User,
                              on_delete=models.CASCADE,
                              related_name='universe')
     name = models.CharField(max_length=100, blank=True, null=True)
