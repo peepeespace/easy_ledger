@@ -40,6 +40,7 @@ class ClientSession(models.Model):
                              related_name='sessions')
     is_authenticated = models.BooleanField(default=False, blank=True, null=True)
     timestamp = models.CharField(max_length=25, blank=True, null=True)
+    session_type = models.CharField(max_length=50, blank=True, null=True) # ACTION, SUBSCRIPTION
     session_id = models.CharField(max_length=100, blank=True, null=True)
     key = models.CharField(max_length=150, blank=True, null=True)
 

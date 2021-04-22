@@ -27,6 +27,7 @@ app = FastAPI()
 
 
 class ConnectionManager:
+
     def __init__(self):
         self.active_connections: List[WebSocket] = []
 
@@ -45,7 +46,7 @@ class ConnectionManager:
             await connection.send_text(message)
 
 
-class ExecutionSessionManger:
+class ActionSessionManger:
 
     def __init__(self):
         self.sessions: Dict[str, WebSocket] = {}
@@ -66,7 +67,7 @@ class ExecutionSessionManger:
                 break
 
 
-class PublishSessionManger:
+class SubscriptionSessionManger:
 
     def __init__(self):
         self.sessions: Dict[str, WebSocket] = {}
@@ -93,8 +94,8 @@ SIMULATOR = simulator_ctx.socket(zmq.REQ)
 SIMULATOR.connect('tcp://localhost:9998')
 
 MANAGER = ConnectionManager()
-SESSION = ExecutionSessionManger()
-PUBLISHER = PublishSessionManger()
+ACT_SESSION = ActionSessionManger()
+SUB_SESSION = SubscriptionSessionManger()
 
 LOOP = asyncio.get_event_loop()
 
@@ -110,8 +111,8 @@ def get_username(user_id):
         return user.email
 
 
-@app.websocket("/ws")
-async def action_websocket_endpoint(websocket: WebSocket):
+@app.websocket("/action")
+async def action_endpoint(websocket: WebSocket):
     await MANAGER.connect(websocket)
     try:
         while True:
@@ -140,8 +141,8 @@ async def action_websocket_endpoint(websocket: WebSocket):
                         session_id = hashlib.sha1(session_info).hexdigest()
 
                         if session_id == client_session.session_id:
-                            SESSION.add_session(session_id, user_id, websocket)
-                            print('Sessions: ', SESSION.sessions)
+                            ACT_SESSION.add_session(session_id, user_id, websocket)
+                            print('Sessions: ', ACT_SESSION.sessions)
                             await send(json.dumps({'status': 'success', 'session_id': session_id}))
                         else:
                             await send(json.dumps({'status': 'failed', 'message': 'wrong session info. check again'}))
@@ -149,7 +150,7 @@ async def action_websocket_endpoint(websocket: WebSocket):
                 elif data_type == 'ping':
                     session_id = data.get('session_id')
 
-                    execution_session, _ = SESSION.get_session(session_id)
+                    execution_session, _ = ACT_SESSION.get_session(session_id)
 
                     if execution_session == websocket:
                         await send(json.dumps({'status': 'success', 'message': 'pong'}))
@@ -161,7 +162,7 @@ async def action_websocket_endpoint(websocket: WebSocket):
                     method = data.get('method')
                     params = data.get('params', {})
 
-                    execution_session, user_id = SESSION.get_session(session_id)
+                    execution_session, user_id = ACT_SESSION.get_session(session_id)
 
                     if execution_session == websocket:
                         req = {
@@ -189,7 +190,7 @@ async def action_websocket_endpoint(websocket: WebSocket):
                     method = data.get('method')
                     params = data.get('params', {})
 
-                    execution_session, _ = SESSION.get_session(session_id)
+                    execution_session, _ = ACT_SESSION.get_session(session_id)
 
                     if execution_session == websocket:
                         if source == 'simulator':
@@ -217,12 +218,12 @@ async def action_websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         MANAGER.disconnect(websocket)
-        SESSION.remove_session(websocket)
-        print('Action Sessions: ', SESSION.sessions)
+        ACT_SESSION.remove_session(websocket)
+        print('Action Sessions: ', ACT_SESSION.sessions)
 
 
-@app.websocket("/sub")
-async def subscription_websocket_endpoint(websocket: WebSocket):
+@app.websocket("/subscription")
+async def subscription_endpoint(websocket: WebSocket):
     await MANAGER.connect(websocket)
 
     try:
@@ -246,5 +247,5 @@ async def subscription_websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         MANAGER.disconnect(websocket)
-        PUBLISHER.remove_session(websocket)
-        print('Publisher Sessions: ', PUBLISHER.sessions)
+        SUB_SESSION.remove_session(websocket)
+        print('Publisher Sessions: ', SUB_SESSION.sessions)

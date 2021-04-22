@@ -100,7 +100,7 @@ class LedgerRESTClient:
         asyncio.get_event_loop().run_until_complete(self.sub_ws_connect())
 
     async def sub_ws_connect(self):
-        async with websockets.connect("ws://localhost:6000/sub") as websocket:
+        async with websockets.connect("ws://localhost:6000/subscription") as websocket:
             await websocket.send(json.dumps({
                 'type': 'make_connection',
                 'session_id': ''
@@ -115,7 +115,7 @@ class LedgerRESTClient:
         asyncio.get_event_loop().run_until_complete(self.ws_connect(queue, session_info))
 
     async def ws_connect(self, queue, session_info):
-        async with websockets.connect("ws://localhost:6000/ws") as websocket:
+        async with websockets.connect("ws://localhost:6000/action") as websocket:
             user_id = session_info['user']
             key = session_info['key']
             result = session_info['result']
