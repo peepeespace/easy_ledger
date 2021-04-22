@@ -20,8 +20,11 @@ class LedgerRESTClient:
         self.minutes_passed = 0
         # self._auto_token_refresh()
 
-        p = Process(target=self.websocket_connection_process, args=(self.queue,))
-        p.start()
+        p1 = Process(target=self.websocket_connection_process, args=(self.queue,))
+        p1.start()
+
+        p2 = Process(target=self.subscription_connection_process)
+        p2.start()
 
     def _auto_token_refresh(self):
         if self.minutes_passed % 5 == 0:
@@ -93,6 +96,20 @@ class LedgerRESTClient:
             print(res.json())
             raise Exception('socket session failed')
 
+    def subscription_connection_process(self):
+        asyncio.get_event_loop().run_until_complete(self.sub_ws_connect())
+
+    async def sub_ws_connect(self):
+        async with websockets.connect("ws://localhost:6000/sub") as websocket:
+            await websocket.send(json.dumps({
+                'type': 'make_connection',
+                'session_id': ''
+            }))
+
+            while True:
+                data = await websocket.recv()
+                print(json.loads(data))
+
     def websocket_connection_process(self, queue):
         session_info = self.make_socket_session()
         asyncio.get_event_loop().run_until_complete(self.ws_connect(queue, session_info))
@@ -146,3 +163,6 @@ if __name__ == '__main__':
     c.send('ledger', method='get_position', params={**base, 'symbol': '005930'})
     # c.send('ledger', method='update_position', params={**base, 'symbol': '005930', 'side': 'BUY', 'price': 100, 'quantity': 12, 'position_amount': 100, 'order_state': 'filled'})
     # c.send('ledger', method='get_position', params={**base, 'symbol': '005930'})
+
+
+    c.send('execution', source='simulator', method='send_order')

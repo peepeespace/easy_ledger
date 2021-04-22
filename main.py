@@ -13,7 +13,9 @@ from db.models import ClientSession
 import zmq.asyncio
 
 import json
+import asyncio
 import hashlib
+import aio_pika
 import traceback
 from functools import partial
 from typing import List, Dict
@@ -64,11 +66,37 @@ class ExecutionSessionManger:
                 break
 
 
-ctx = zmq.asyncio.Context()
-LEDGER = ctx.socket(zmq.REQ)
+class PublishSessionManger:
+
+    def __init__(self):
+        self.sessions: Dict[str, WebSocket] = {}
+
+    def add_session(self, session_id: str, websocket: WebSocket):
+        self.sessions[session_id] = websocket
+
+    def get_session(self, session_id: str):
+        return self.sessions.get(session_id)
+
+    def remove_session(self, websocket: WebSocket):
+        for session_id in list(self.sessions.keys()):
+            if self.sessions[session_id] == websocket:
+                self.sessions.pop(session_id)
+                break
+
+
+ledger_ctx = zmq.asyncio.Context()
+LEDGER = ledger_ctx.socket(zmq.REQ)
 LEDGER.connect('tcp://localhost:9999')
+
+simulator_ctx = zmq.asyncio.Context()
+SIMULATOR = simulator_ctx.socket(zmq.REQ)
+SIMULATOR.connect('tcp://localhost:9998')
+
 MANAGER = ConnectionManager()
 SESSION = ExecutionSessionManger()
+PUBLISHER = PublishSessionManger()
+
+LOOP = asyncio.get_event_loop()
 
 @sync_to_async
 def get_client_session(user_id):
@@ -83,7 +111,7 @@ def get_username(user_id):
 
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def action_websocket_endpoint(websocket: WebSocket):
     await MANAGER.connect(websocket)
     try:
         while True:
@@ -155,6 +183,31 @@ async def websocket_endpoint(websocket: WebSocket):
                     else:
                         await send(json.dumps({'status': 'failed', 'message': 'no existing session. make_connection first'}))
 
+                elif data_type == 'execution':
+                    session_id = data.get('session_id')
+                    source = data.get('source')
+                    method = data.get('method')
+                    params = data.get('params', {})
+
+                    execution_session, _ = SESSION.get_session(session_id)
+
+                    if execution_session == websocket:
+                        if source == 'simulator':
+                            req = {
+                                'type': method,
+                                'session_id': session_id,
+                                'params': params
+                            }
+                            res = {}
+
+                            await SIMULATOR.send_string(json.dumps(req))
+                            raw_res = await SIMULATOR.recv_string()
+                            res = {**res, **json.loads(raw_res)}
+
+                            await send(json.dumps({'status': 'success', **res}))
+                    else:
+                        await send(json.dumps({'status': 'failed', 'message': 'no existing session. make_connection first'}))
+
                 else:
                     await send(json.dumps({'status': 'failed', 'message': 'wrong type field'}))
 
@@ -165,4 +218,33 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         MANAGER.disconnect(websocket)
         SESSION.remove_session(websocket)
-        print('Sessions: ', SESSION.sessions)
+        print('Action Sessions: ', SESSION.sessions)
+
+
+@app.websocket("/sub")
+async def subscription_websocket_endpoint(websocket: WebSocket):
+    await MANAGER.connect(websocket)
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+
+            connection = await aio_pika.connect_robust(
+                'amqp://qraft:developer@localhost/',
+                loop=LOOP
+            )
+
+            channel = await connection.channel()
+
+            queue = await channel.declare_queue('ledger')
+
+            async with queue.iterator() as queue_iter:
+                async for message in queue_iter:
+                    async with message.process():
+                        message = message.body.decode('utf-8')
+                        await MANAGER.broadcast(message)
+
+    except WebSocketDisconnect:
+        MANAGER.disconnect(websocket)
+        PUBLISHER.remove_session(websocket)
+        print('Publisher Sessions: ', PUBLISHER.sessions)
