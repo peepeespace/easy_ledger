@@ -20,6 +20,9 @@ class LedgerRESTClient:
         self.minutes_passed = 0
         # self._auto_token_refresh()
 
+        # p = Process(target=self.data_connection_process)
+        # p.start()
+
         p1 = Process(target=self.websocket_connection_process, args=(self.queue,))
         p1.start()
 
@@ -84,10 +87,11 @@ class LedgerRESTClient:
             **kwargs
         })
 
-    def make_socket_session(self):
+    def make_socket_session(self, session_type):
         params = {
             'username': self.email,
-            'password': self.password
+            'password': self.password,
+            'session_type': session_type
         }
         res = requests.post(f'{self.server_host}/api/user/login/', data=params)
         if res.status_code == 200:
@@ -95,6 +99,16 @@ class LedgerRESTClient:
         else:
             print(res.json())
             raise Exception('socket session failed')
+
+    def data_connection_process(self):
+        asyncio.get_event_loop().run_until_complete(self.data_ws_connect())
+
+    async def data_ws_connect(self):
+        async with websockets.connect('ws://localhost:6000/data') as websocket:
+            while True:
+                data = await websocket.recv()
+                data = json.loads(data)
+                print(data)
 
     def subscription_connection_process(self):
         asyncio.get_event_loop().run_until_complete(self.sub_ws_connect())
@@ -111,7 +125,7 @@ class LedgerRESTClient:
                 print(json.loads(data))
 
     def websocket_connection_process(self, queue):
-        session_info = self.make_socket_session()
+        session_info = self.make_socket_session(session_type='ACTION')
         asyncio.get_event_loop().run_until_complete(self.ws_connect(queue, session_info))
 
     async def ws_connect(self, queue, session_info):
@@ -131,6 +145,7 @@ class LedgerRESTClient:
 
             res = await websocket.recv()
             res = json.loads(res)
+            print(res)
 
             status = res['status']
             session_id = res['session_id']
@@ -147,7 +162,7 @@ class LedgerRESTClient:
 
 
 if __name__ == '__main__':
-    c = LedgerRESTClient('ppark9553@naver.com', '123123!!')
+    c = LedgerRESTClient('ppark9553@gmail.com', '123123!!')
 
     ledger_name = 'my_first_ledger_1'
     strategy_name = 'strat_1'

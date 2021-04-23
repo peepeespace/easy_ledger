@@ -102,24 +102,24 @@ class LedgerServer:
                                                            db_save=False)
         return ledger_name
 
-    def get_ledger(self, session_id, username, ledger_name):
+    def get_ledger(self, session_id, username, ledger_name, **kwargs):
         self.add_ledger(session_id, username, ledger_name)
         return self.ledgers[session_id][ledger_name]
 
-    def get_cash(self, session_id, username, ledger_name, strategy_name, quote=None):
+    def get_cash(self, session_id, username, ledger_name, strategy_name, quote=None, **kwargs):
         ledger = self.get_ledger(session_id, username, ledger_name)
         return ledger.get_cash(strategy_name=strategy_name, quote=quote)
 
-    def update_cash(self, session_id, username, ledger_name, strategy_name, amount, quote=None):
+    def update_cash(self, session_id, username, ledger_name, strategy_name, amount, quote=None, **kwargs):
         ledger = self.get_ledger(session_id, username, ledger_name)
         ledger.update_cash(strategy_name=strategy_name, amount=amount, quote=quote)
 
-    def get_orders(self, session_id, username, ledger_name, strategy_name):
+    def get_orders(self, session_id, username, ledger_name, strategy_name, **kwargs):
         ledger = self.get_ledger(session_id, username, ledger_name)
         orders = ledger.get_orders(strategy_name=strategy_name)
         print(orders)
 
-    def get_order(self, session_id, username, ledger_name, strategy_name, order_number):
+    def get_order(self, session_id, username, ledger_name, strategy_name, order_number, **kwargs):
         ledger = self.get_ledger(session_id, username, ledger_name)
         order = ledger.get_order(strategy_name=strategy_name,
                                  order_number=order_number,

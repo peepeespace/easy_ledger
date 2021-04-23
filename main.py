@@ -19,6 +19,7 @@ import aio_pika
 import traceback
 from functools import partial
 from typing import List, Dict
+from aio_pika import ExchangeType
 from cryptography.fernet import Fernet
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
@@ -46,15 +47,38 @@ class ConnectionManager:
             await connection.send_text(message)
 
 
+class DataSessionManger:
+
+    def __init__(self):
+        self.sessions: List[WebSocket] = []
+
+    def add_session(self, websocket: WebSocket):
+        self.sessions.append(websocket)
+
+    def remove_session(self, websocket: WebSocket):
+        self.sessions.remove(websocket)
+
+    async def publish(self, data: str, websocket: WebSocket = None):
+        if websocket is None:
+            for session in self.sessions:
+                await session.send_text(data)
+        else:
+            await websocket.send_text(data)
+
+
 class ActionSessionManger:
 
     def __init__(self):
         self.sessions: Dict[str, WebSocket] = {}
-        self.user_info: Dict[str, int] = {}
+        self.user_info: Dict[str, dict] = {}
 
-    def add_session(self, session_id: str, user_id: int, websocket: WebSocket):
+    def add_session(self,
+                    session_id: str,
+                    user_id: int,
+                    username: str,
+                    websocket: WebSocket):
         self.sessions[session_id] = websocket
-        self.user_info[session_id] = user_id
+        self.user_info[session_id] = {'id': user_id, 'username': username}
 
     def get_session(self, session_id: str):
         return self.sessions.get(session_id), self.user_info.get(session_id)
@@ -71,37 +95,52 @@ class SubscriptionSessionManger:
 
     def __init__(self):
         self.sessions: Dict[str, WebSocket] = {}
+        self.action_session_info: Dict[str, str] = {}
 
-    def add_session(self, session_id: str, websocket: WebSocket):
+    def add_session(self, session_id: str, action_session_id: str, websocket: WebSocket):
         self.sessions[session_id] = websocket
+        self.action_session_info[session_id] = action_session_id
 
     def get_session(self, session_id: str):
-        return self.sessions.get(session_id)
+        return self.sessions.get(session_id), self.action_session_info.get(session_id)
+
+    def get_action_session_id(self, session_id: str):
+        return self.action_session_info.get(session_id)
 
     def remove_session(self, websocket: WebSocket):
         for session_id in list(self.sessions.keys()):
             if self.sessions[session_id] == websocket:
                 self.sessions.pop(session_id)
+                self.action_session_info.pop(session_id)
                 break
 
 
+# Futures data streaming server
+data_ctx = zmq.asyncio.Context()
+DATA = data_ctx.socket(zmq.SUB)
+DATA.connect('tcp://10.0.1.128:5567')
+DATA.setsockopt_string(zmq.SUBSCRIBE, "")
+
+# Ledger server
 ledger_ctx = zmq.asyncio.Context()
 LEDGER = ledger_ctx.socket(zmq.REQ)
 LEDGER.connect('tcp://localhost:9999')
 
+# Simulator execution server
 simulator_ctx = zmq.asyncio.Context()
 SIMULATOR = simulator_ctx.socket(zmq.REQ)
 SIMULATOR.connect('tcp://localhost:9998')
 
 MANAGER = ConnectionManager()
+DAT_SESSION = DataSessionManger()
 ACT_SESSION = ActionSessionManger()
 SUB_SESSION = SubscriptionSessionManger()
 
 LOOP = asyncio.get_event_loop()
 
 @sync_to_async
-def get_client_session(user_id):
-    sessions = ClientSession.objects.filter(user=user_id).first()
+def get_client_session(user_id: int, session_type: str):
+    sessions = ClientSession.objects.filter(user=user_id, session_type=session_type).first()
     return sessions
 
 @sync_to_async
@@ -109,6 +148,20 @@ def get_username(user_id):
     user = User.objects.filter(id=user_id).first()
     if user:
         return user.email
+
+
+@app.websocket("/data")
+async def data_endpoint(websocket: WebSocket):
+    await MANAGER.connect(websocket)
+    DAT_SESSION.add_session(websocket)
+    try:
+        while True:
+            data = await DATA.recv_string()
+            await DAT_SESSION.publish(data, websocket)
+    except WebSocketDisconnect:
+        MANAGER.disconnect(websocket)
+        DAT_SESSION.remove_session(websocket)
+        print('Data Sessions: ', DAT_SESSION.sessions)
 
 
 @app.websocket("/action")
@@ -132,7 +185,7 @@ async def action_endpoint(websocket: WebSocket):
                     user_id = data.get('user')
                     session = data.get('session', '')
 
-                    client_session = await get_client_session(user_id)
+                    client_session = await get_client_session(user_id, 'ACTION')
 
                     if client_session.is_authenticated:
                         session_info = Fernet(client_session.key.encode('utf-8')).decrypt(
@@ -141,11 +194,14 @@ async def action_endpoint(websocket: WebSocket):
                         session_id = hashlib.sha1(session_info).hexdigest()
 
                         if session_id == client_session.session_id:
-                            ACT_SESSION.add_session(session_id, user_id, websocket)
+                            username = await get_username(user_id)
+                            ACT_SESSION.add_session(session_id, user_id, username, websocket)
                             print('Sessions: ', ACT_SESSION.sessions)
                             await send(json.dumps({'status': 'success', 'session_id': session_id}))
                         else:
                             await send(json.dumps({'status': 'failed', 'message': 'wrong session info. check again'}))
+                    else:
+                        await send(json.dumps({'status': 'failed', 'message': 'wrong session info. check again'}))
 
                 elif data_type == 'ping':
                     session_id = data.get('session_id')
@@ -153,7 +209,7 @@ async def action_endpoint(websocket: WebSocket):
                     execution_session, _ = ACT_SESSION.get_session(session_id)
 
                     if execution_session == websocket:
-                        await send(json.dumps({'status': 'success', 'message': 'pong'}))
+                        await send(json.dumps({'status': 'success', 'result': 'pong'}))
                     else:
                         await send(json.dumps({'status': 'failed', 'message': 'no existing session. make_connection first'}))
 
@@ -162,23 +218,21 @@ async def action_endpoint(websocket: WebSocket):
                     method = data.get('method')
                     params = data.get('params', {})
 
-                    execution_session, user_id = ACT_SESSION.get_session(session_id)
+                    execution_session, user_info = ACT_SESSION.get_session(session_id)
 
                     if execution_session == websocket:
                         req = {
                             'type': method,
                             'params': params
                         }
-                        res = {}
 
-                        username = await get_username(user_id)
                         req['params'] = {**req['params'],
                                          'session_id': session_id,
-                                         'username': username}
+                                         'username': user_info['username']}
 
                         await LEDGER.send_string(json.dumps(req))
                         raw_res = await LEDGER.recv_string()
-                        res = {**res, **json.loads(raw_res)}
+                        res = json.loads(raw_res)
 
                         await send(json.dumps({'status': 'success', **res}))
                     else:
@@ -199,11 +253,10 @@ async def action_endpoint(websocket: WebSocket):
                                 'session_id': session_id,
                                 'params': params
                             }
-                            res = {}
 
                             await SIMULATOR.send_string(json.dumps(req))
                             raw_res = await SIMULATOR.recv_string()
-                            res = {**res, **json.loads(raw_res)}
+                            res = json.loads(raw_res)
 
                             await send(json.dumps({'status': 'success', **res}))
                     else:
@@ -230,20 +283,80 @@ async def subscription_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
 
-            connection = await aio_pika.connect_robust(
-                'amqp://qraft:developer@localhost/',
-                loop=LOOP
-            )
+            send = partial(MANAGER.send_personal_message, websocket=websocket)
 
-            channel = await connection.channel()
+            try:
+                data = json.loads(data)
 
-            queue = await channel.declare_queue('ledger')
+                data_type = data.get('type')
 
-            async with queue.iterator() as queue_iter:
-                async for message in queue_iter:
-                    async with message.process():
-                        message = message.body.decode('utf-8')
-                        await MANAGER.broadcast(message)
+                if data_type is None:
+                    await send(json.dumps({'status': 'failed', 'message': 'no type provided'}))
+
+                elif data_type == 'make_connection':
+                    user_id = data.get('user')
+                    session = data.get('session', '')
+
+                    client_session = await get_client_session(user_id, 'SUBSCRIPTION')
+
+                    if client_session.is_authenticated:
+                        session_info = Fernet(client_session.key.encode('utf-8')).decrypt(
+                            session.encode('utf-8')
+                        )
+                        session_id = hashlib.sha1(session_info).hexdigest()
+
+                        if session_id == client_session.session_id:
+                            action_session = await get_client_session(user_id, 'ACTION')
+                            SUB_SESSION.add_session(session_id, action_session.session_id, websocket)
+                            print('Sessions: ', SUB_SESSION.sessions)
+                            await send(json.dumps({'status': 'success', 'session_id': session_id}))
+                        else:
+                            await send(json.dumps({'status': 'failed', 'message': 'wrong session info. check again'}))
+                    else:
+                        await send(json.dumps({'status': 'failed', 'message': 'wrong session info. check again'}))
+
+                elif data_type == 'start_stream':
+                    session_id = data.get('session_id')
+
+                    sub_session, act_session_id = SUB_SESSION.get_session(session_id)
+
+                    if sub_session == websocket:
+                        connection = await aio_pika.connect_robust(
+                            'amqp://qraft:developer@localhost/',
+                            loop=LOOP
+                        )
+
+                        def on_message(message):
+                            print('consuming message')
+                            print(message)
+
+                        channel = await connection.channel()
+
+                        exchange = await channel.declare_exchange('ledger_exchange', ExchangeType.TOPIC)
+                        queue = await channel.declare_queue('ledger_queue')
+                        await queue.bind(exchange, routing_key=act_session_id)
+                        await queue.consume(on_message)
+
+                        # channel = await connection.channel()
+                        #
+                        # queue = await channel.declare_queue('ledger')
+                        #
+                        # async with queue.iterator() as queue_iter:
+                        #     async for message in queue_iter:
+                        #         async with message.process():
+                        #             message = message.body.decode('utf-8')
+                        #             message = json.loads(message)
+                        #             if message['session_id'] == act_session_id:
+                        #                 await send(json.dumps(message))
+                    else:
+                        await send(json.dumps({'status': 'failed', 'message': 'no existing session. make_connection first'}))
+
+                else:
+                    await send(json.dumps({'status': 'failed', 'message': 'wrong type field'}))
+
+            except:
+                traceback.print_exc()
+                await send(json.dumps({'status': 'failed', 'message': 'request should be made in json format'}))
 
     except WebSocketDisconnect:
         MANAGER.disconnect(websocket)

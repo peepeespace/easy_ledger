@@ -46,12 +46,13 @@ class LoginView(APIView):
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
+        session_type = request.data.get('session_type')
 
         user = authenticate(username=username, password=password)
 
         if user is not None:
             # 현존하는 소켓 연결이 있는지 확인한다.
-            existing_conn = ClientSession.objects.filter(user=user).all()
+            existing_conn = ClientSession.objects.filter(user=user, session_type=session_type).all()
             if existing_conn:
                 # 연결을 하나로 제한 (추후 변경 가능)
                 existing_conn.delete()
@@ -79,6 +80,7 @@ class LoginView(APIView):
             session = ClientSession(user=user,
                                     is_authenticated=True,
                                     timestamp=timestamp,
+                                    session_type=session_type,
                                     session_id=session_id,
                                     key=key_str)
             session.save()
