@@ -53,8 +53,8 @@ class LedgerServer:
 
                 elif req_type == 'get_orders':
                     params = req.get('params', {})
-                    self.get_orders(**params)
-                    self._send({'status': 'success', 'result': f'{req_type} successful'})
+                    orders = self.get_orders(**params)
+                    self._send({'status': 'success', 'result': orders})
 
                 elif req_type == 'get_order':
                     params = req.get('params', {})
@@ -64,6 +64,26 @@ class LedgerServer:
                 elif req_type == 'clean_orders':
                     params = req.get('params', {})
                     self.clean_orders(**params)
+                    self._send({'status': 'success', 'result': f'{req_type} successful'})
+
+                elif req_type == 'init_order':
+                    params = req.get('params', {})
+                    order_hash = self.init_order(**params)
+                    self._send({'status': 'success', 'result': order_hash})
+
+                elif req_type == 'register_order':
+                    params = req.get('params', {})
+                    strategy_name = self.register_order(**params)
+                    self._send({'status': 'success', 'result': strategy_name})
+
+                elif req_type == 'cancel_order':
+                    params = req.get('params', {})
+                    self.cancel_order(**params)
+                    self._send({'status': 'success', 'result': f'{req_type} successful'})
+
+                elif req_type == 'fill_order':
+                    params = req.get('params', {})
+                    self.fill_order(**params)
                     self._send({'status': 'success', 'result': f'{req_type} successful'})
 
                 elif req_type == 'get_positions':
@@ -117,7 +137,8 @@ class LedgerServer:
     def get_orders(self, session_id, username, ledger_name, strategy_name, **kwargs):
         ledger = self.get_ledger(session_id, username, ledger_name)
         orders = ledger.get_orders(strategy_name=strategy_name)
-        print(orders)
+        orders = [o.__dict__ for o in orders]
+        return orders
 
     def get_order(self, session_id, username, ledger_name, strategy_name, order_number, **kwargs):
         ledger = self.get_ledger(session_id, username, ledger_name)
@@ -126,18 +147,48 @@ class LedgerServer:
                                  format='dict')
         return order
 
-    def clean_orders(self, session_id, username, ledger_name, strategy_name, state):
+    def clean_orders(self, session_id, username, ledger_name, strategy_name, state, **kwargs):
         ledger = self.get_ledger(session_id, username, ledger_name)
         ledger.clean_orders(state=state,
                             strategy_name=strategy_name)
 
-    def get_positions(self, session_id, username, ledger_name, strategy_name):
+    def init_order(self, session_id, username, ledger_name, strategy_name, symbol, price,
+                   quantity, side, order_type, quote=None, meta=None, **kwargs):
+        ledger = self.get_ledger(session_id, username, ledger_name)
+        order_hash = ledger.init_order(strategy_name=strategy_name,
+                                       symbol=symbol,
+                                       price=price,
+                                       quantity=quantity,
+                                       side=side,
+                                       order_type=order_type,
+                                       quote=quote,
+                                       meta=meta)
+        return order_hash
+
+    def register_order(self, session_id, username, ledger_name, strategy_name,
+                       order_number, order_hash, **kwargs):
+        ledger = self.get_ledger(session_id, username, ledger_name)
+        strategy_name = ledger.register_order(order_number=order_number, order_hash=order_hash)
+        return strategy_name
+
+    def cancel_order(self, session_id, username, ledger_name, strategy_name,
+                     order_number, **kwargs):
+        ledger = self.get_ledger(session_id, username, ledger_name)
+        ledger.cancel_order(strategy_name=strategy_name, order_number=order_number)
+
+    def fill_order(self, session_id, username, ledger_name, strategy_name,
+                   order_number, price, quantity, position_amount=None, **kwargs):
+        ledger = self.get_ledger(session_id, username, ledger_name)
+        ledger.fill_order(strategy_name=strategy_name, order_number=order_number, price=price,
+                          quantity=quantity, position_amount=position_amount)
+
+    def get_positions(self, session_id, username, ledger_name, strategy_name, **kwargs):
         ledger = self.get_ledger(session_id, username, ledger_name)
         positions = ledger.get_positions(strategy_name=strategy_name)
         res = {symbol: position.__dict__ for symbol, position in positions.items()}
         return res
 
-    def get_position(self, session_id, username, ledger_name, strategy_name, symbol):
+    def get_position(self, session_id, username, ledger_name, strategy_name, symbol, **kwargs):
         ledger = self.get_ledger(session_id, username, ledger_name)
         position = ledger.get_position(strategy_name=strategy_name,
                                        symbol=symbol,
@@ -145,7 +196,7 @@ class LedgerServer:
         return position
 
     def update_position(self, session_id, username, ledger_name, strategy_name, symbol,
-                        side, price, quantity, position_amount=None, order_state=None):
+                        side, price, quantity, position_amount=None, order_state=None, **kwargs):
         ledger = self.get_ledger(session_id, username, ledger_name)
         ledger.update_position(strategy_name=strategy_name,
                                symbol=symbol,

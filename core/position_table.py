@@ -9,8 +9,8 @@ class PositionTable:
 
     CACHE_NAME = 'PositionTable.pkl'
 
-    def __init__(self, ledger_name='', auto_save=False):
-        path = Path.home() / 'easy_ledger' / ledger_name
+    def __init__(self, user_name='', ledger_name='', auto_save=False):
+        path = Path.home() / 'easy_ledger' / user_name / ledger_name
         path.mkdir(parents=True, exist_ok=True)
         self.CACHE_NAME = path / self.CACHE_NAME
         self.auto_save = auto_save

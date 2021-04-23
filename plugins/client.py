@@ -3,7 +3,7 @@ import json
 import uuid
 
 
-class LedgerPlugin:
+class LedgerPluginClient:
 
     def __init__(self, ledger_name, strategy_name):
         ctx = zmq.Context()
@@ -50,7 +50,8 @@ class LedgerPlugin:
         return self._request(req)
 
     def get_orders(self):
-        pass
+        req = self.build_request_object('get_orders')
+        return self._request(req)
 
     def get_order(self, order_number):
         req = self.build_request_object('get_order', order_number=order_number)
@@ -58,6 +59,33 @@ class LedgerPlugin:
 
     def clean_orders(self, state):
         req = self.build_request_object('clean_orders', state=state)
+        return self._request(req)
+
+    def init_order(self, symbol, price, quantity, side, order_type, quote=None, meta=None):
+        req = self.build_request_object('init_order',
+                                        symbol=symbol,
+                                        price=price,
+                                        quantity=quantity,
+                                        side=side,
+                                        order_type=order_type,
+                                        quote=quote,
+                                        meta=meta)
+        return self._request(req)
+
+    def register_order(self, order_number, order_hash):
+        req = self.build_request_object('register_order', order_number=order_number, order_hash=order_hash)
+        return self._request(req)
+
+    def cancel_order(self, order_number):
+        req = self.build_request_object('cancel_order', order_number=order_number)
+        return self._request(req)
+
+    def fill_order(self, order_number, price, quantity, position_amount=None):
+        req = self.build_request_object('fill_order',
+                                        order_number=order_number,
+                                        price=price,
+                                        quantity=quantity,
+                                        position_amount=position_amount)
         return self._request(req)
 
     def get_positions(self):
@@ -79,29 +107,36 @@ class LedgerPlugin:
         return self._request(req)
 
 if __name__ == '__main__':
-    p = LedgerPlugin('ledger_1', 'strategy_1')
-    cash = p.get_cash()
-    print(cash)
-
-    res = p.update_cash(10000, 'usdt')
+    p = LedgerPluginClient('ledger_1', 'strategy_1')
+    res = p.get_orders()
     print(res)
-
-    cash = p.get_cash('usdt')
-    print(cash)
-
-    position = p.get_position('005930')
-    print(position)
-
-    res = p.update_position(symbol='005930', side='SELL', price=900, quantity=1)
-    print(res)
-    res = p.update_position(symbol='005930', side='SELL', price=900, quantity=2)
-    print(res)
-    res = p.update_position(symbol='005930', side='SELL', price=900, quantity=3)
-    print(res)
-
-    position = p.get_position('005930')
-    print(position)
-
-
-    positions = p.get_positions()
-    print(positions)
+    # cash = p.get_cash()
+    # print(cash)
+    #
+    # res = p.update_cash(10000, 'usdt')
+    # print(res)
+    #
+    # cash = p.get_cash('usdt')
+    # print(cash)
+    #
+    # position = p.get_position('005930')
+    # print(position)
+    #
+    # res = p.update_position(symbol='005930', side='SELL', price=900, quantity=-1)
+    # print(res)
+    # res = p.update_position(symbol='005930', side='SELL', price=900, quantity=2)
+    # print(res)
+    # res = p.update_position(symbol='005930', side='SELL', price=900, quantity=3)
+    # print(res)
+    #
+    # position = p.get_position('005930')
+    # print(position)
+    #
+    #
+    # positions = p.get_positions()
+    # print(positions)
+    #
+    #
+    #
+    # order_hash = p.init_order('005930', 100, 10, 'BUY', 'LIMIT')
+    # print(order_hash)

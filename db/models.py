@@ -101,11 +101,25 @@ class Strategy(models.Model):
         return f'[Ledger ID: {self.ledger}] {self.name}'
 
 
+class Cash(models.Model):
+    user = models.ForeignKey(User,
+                             on_delete=models.CASCADE,
+                             related_name='cash')
+    strategy_name = models.CharField(max_length=150, blank=True, null=True)
+    quote = models.CharField(max_length=50, blank=True, null=True)
+    amount = models.FloatField(blank=True, null=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'[User ID: {self.user.id}] {self.strategy_name} {self.quote} {self.amount}'
+
+
 class Order(models.Model):
     user = models.ForeignKey(User,
                              on_delete=models.CASCADE,
                              related_name='orders')
-    strategy_name = models.CharField(max_length=150)
+    strategy_name = models.CharField(max_length=150, blank=True, null=True)
     order_state = models.CharField(max_length=6, choices=ORDER_STATE_CHOICES, blank=True, null=True)
     init_time = models.CharField(max_length=25, blank=True, null=True)
     symbol = models.CharField(max_length=30, blank=True, null=True)
@@ -153,7 +167,7 @@ class Position(models.Model):
     user = models.ForeignKey(User,
                              on_delete=models.CASCADE,
                              related_name='positions')
-    strategy_name = models.CharField(max_length=150)
+    strategy_name = models.CharField(max_length=150, blank=True, null=True)
     position_state = models.CharField(max_length=6, choices=POSITION_STATE_CHOICES, blank=True, null=True)
     symbol = models.CharField(max_length=30, blank=True, null=True)
     quote = models.CharField(max_length=100, blank=True, null=True)
