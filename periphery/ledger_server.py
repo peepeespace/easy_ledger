@@ -88,7 +88,7 @@ class LedgerServer:
                 traceback.print_exc()
                 self._send({'status': 'error', 'result': 'wrong request format. type field is required.'})
 
-    def add_ledger(self, session_id, username, ledger_name=None):
+    def add_ledger(self, session_id, username=None, ledger_name=None, **kwargs):
         if ledger_name is None:
             ledger_name = str(uuid.uuid1())
 

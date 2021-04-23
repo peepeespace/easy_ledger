@@ -74,7 +74,8 @@ class Position:
         self.side = side if side is not None else ''                                      # BUY / SELL
         self.average_price = price if price is not None else 0.0                          # 평균단가 (주식/계약 가격)
         self.quantity = quantity if quantity is not None else 0.0                         # 투자수량
-        self.position_amount = position_amount if position_amount is not None else 0.0    # 투자금액
+        self.position_amount = position_amount if position_amount is not None \
+                                    else price * quantity                                 # 투자금액
         try:
             self.leverage = abs((price * quantity) / position_amount)  # (평균단가 * 투자수량) / 투자금액
         except:
@@ -107,13 +108,6 @@ class Position:
                                                        quantity=quantity)
 
         self.quantity += quantity
-        if position_amount is None:
-            amount = price * quantity
-            if self.side == 'SELL':
-                amount = -1 * amount
-            self.position_amount += amount
-        else:
-            self.position_amount += position_amount
 
         if self.side == 'BUY':
             if quantity > 0.0:
@@ -130,6 +124,21 @@ class Position:
                 trade_position = 'CANCEL'
             else:
                 trade_position = 'EXIT'
+
+        if trade_position == 'ENTER':
+            p = price
+        elif trade_position == 'EXIT':
+            p = self.average_price
+        else:
+            p = 0.0
+
+        if position_amount is None:
+            amount = p * quantity
+            if self.side == 'SELL':
+                amount = -1 * amount
+            self.position_amount += amount
+        else:
+            self.position_amount += position_amount
 
         self.trade_history.append(trade_position)
 
@@ -184,11 +193,13 @@ class Position:
 
 if __name__ == '__main__':
     p = Position('name', 'symbol')
-    p.open_position(side='BUY', price=100, quantity=1, position_amount=-100)
+    p.open_position(side='BUY', price=100, quantity=1)
     print(p.__dict__)
-    p.update_position(price=110, quantity=3, position_amount=-330)
+    p.update_position(price=110, quantity=3)
     print(p.__dict__)
-    p.update_position(price=120, quantity=-1, position_amount=120)
+    p.update_position(price=120, quantity=-1)
+    print(p.__dict__)
+    p.update_position(price=100, quantity=-3)
     print(p.__dict__)
 
     print(p)
