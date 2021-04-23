@@ -61,7 +61,8 @@ class LedgerPlugin:
         return self._request(req)
 
     def get_positions(self):
-        pass
+        req = self.build_request_object('get_positions')
+        return self._request(req)
 
     def get_position(self, symbol):
         req = self.build_request_object('get_position', symbol=symbol)
@@ -91,8 +92,16 @@ if __name__ == '__main__':
     position = p.get_position('005930')
     print(position)
 
-    res = p.update_position(symbol='005930', side='BUY', price=900, quantity=-10)
+    res = p.update_position(symbol='005930', side='SELL', price=900, quantity=1)
+    print(res)
+    res = p.update_position(symbol='005930', side='SELL', price=900, quantity=2)
+    print(res)
+    res = p.update_position(symbol='005930', side='SELL', price=900, quantity=3)
     print(res)
 
     position = p.get_position('005930')
     print(position)
+
+
+    positions = p.get_positions()
+    print(positions)

@@ -68,8 +68,8 @@ class LedgerServer:
 
                 elif req_type == 'get_positions':
                     params = req.get('params', {})
-                    self.get_positions(**params)
-                    self._send({'status': 'success', 'result': f'{req_type} successful'})
+                    positions = self.get_positions(**params)
+                    self._send({'status': 'success', 'result': positions})
 
                 elif req_type == 'get_position':
                     params = req.get('params', {})
@@ -134,7 +134,8 @@ class LedgerServer:
     def get_positions(self, session_id, username, ledger_name, strategy_name):
         ledger = self.get_ledger(session_id, username, ledger_name)
         positions = ledger.get_positions(strategy_name=strategy_name)
-        print(positions)
+        res = {symbol: position.__dict__ for symbol, position in positions.items()}
+        return res
 
     def get_position(self, session_id, username, ledger_name, strategy_name, symbol):
         ledger = self.get_ledger(session_id, username, ledger_name)

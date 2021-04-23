@@ -21,7 +21,6 @@ class Position:
         self.quote = quote
         self.meta = meta
 
-    @classmethod
     def update_average_price(self,
                              prev_average_price: float,
                              prev_quantity: float,
@@ -40,7 +39,7 @@ class Position:
             EXIT을 하는 경우 quantity에만 영향을 미친다.
         """
 
-        if quantity >= 0:
+        if (self.side == 'BUY' and quantity >= 0) or (self.side == 'SELL' and quantity <= 0):
             p = price
         else:
             p = prev_average_price
@@ -51,7 +50,7 @@ class Position:
         if denominator == 0.0:
             return 0.0
         else:
-            return numerator / denominator
+            return abs(numerator / denominator)
 
     def open_position(self,
                       side: str = None,
@@ -97,57 +96,91 @@ class Position:
 
         실제로 fill/close된 주문에 대해서만 fill_history에 기록한다. (체결완료 / 주문취소 두가지 경우에 가능)
         """
-        self.price_history.append(price)
-        self.quantity_history.append(quantity)
-        self.fill_history.append((order_state == OrderState.FILLED) or \
-                                 (order_state == OrderState.CLOSED))
-
-        self.average_price = self.update_average_price(prev_average_price=self.average_price,
-                                                       prev_quantity=self.quantity,
-                                                       price=price,
-                                                       quantity=quantity)
-
-        self.quantity += quantity
-
-        if self.side == 'BUY':
-            if quantity > 0.0:
-                trade_position = 'ENTER'
-            elif quantity == 0.0:
-                trade_position = 'CANCEL'
+        if (self.side == 'BUY' and (self.quantity + quantity < 0.0)) or \
+                (self.side == 'SELL' and (self.quantity + quantity > 0.0)):
+            quantities = [-1 * self.quantity, self.quantity + quantity]
+            if position_amount is not None:
+                positions = [position_amount / abs(quantities[0] / quantity),
+                             position_amount / abs(quantities[1] / quantity)]
             else:
-                trade_position = 'EXIT'
+                positions = [None, None]
 
-        if self.side == 'SELL':
-            if quantity < 0.0:
-                trade_position = 'ENTER'
-            elif quantity == 0.0:
-                trade_position = 'CANCEL'
+        else:
+            quantities = [quantity]
+            positions = [position_amount]
+
+        prev_side = self.side
+        update_cnt = 0
+
+        for i in range(len(quantities)):
+
+            quantity = quantities[i]
+            position_amount = positions[i]
+
+            if update_cnt == 1:
+                """
+                update를 두번하는 경우는 position side가 바뀌는 경우 뿐이다.
+                
+                update_cnt가 1이면 새로운 포지션을 등록시켜 주고,
+                첫 번째 cnt라면 평상시처럼 기존 포지션을 업데이트한다.
+                """
+                new_side = 'BUY' if prev_side == 'SELL' else 'SELL'
+                self.open_position(side=new_side,
+                                   price=price,
+                                   quantity=quantity,
+                                   position_amount=position_amount,
+                                   order_state=order_state)
             else:
-                trade_position = 'EXIT'
+                self.price_history.append(price)
+                self.quantity_history.append(quantity)
+                self.fill_history.append((order_state == OrderState.FILLED) or \
+                                         (order_state == OrderState.CLOSED))
 
-        if trade_position == 'ENTER':
-            p = price
-        elif trade_position == 'EXIT':
-            p = self.average_price
-        else:
-            p = 0.0
+                self.average_price = self.update_average_price(prev_average_price=self.average_price,
+                                                               prev_quantity=self.quantity,
+                                                               price=price,
+                                                               quantity=quantity)
 
-        if position_amount is None:
-            amount = p * quantity
-            if self.side == 'SELL':
-                amount = -1 * amount
-            self.position_amount += amount
-        else:
-            self.position_amount += position_amount
+                self.quantity += quantity
 
-        self.trade_history.append(trade_position)
+                if self.side == 'BUY':
+                    if quantity > 0.0:
+                        trade_position = 'ENTER'
+                    elif quantity == 0.0:
+                        trade_position = 'CANCEL'
+                    else:
+                        trade_position = 'EXIT'
 
-        try:
-            self.leverage = abs((self.average_price * self.quantity) / self.position_amount)
-        except:
-            self.leverage = 0
+                if self.side == 'SELL':
+                    if quantity < 0.0:
+                        trade_position = 'ENTER'
+                    elif quantity == 0.0:
+                        trade_position = 'CANCEL'
+                    else:
+                        trade_position = 'EXIT'
 
-        self.close_position()
+                if trade_position == 'ENTER':
+                    p = price
+                elif trade_position == 'EXIT':
+                    p = self.average_price
+                else:
+                    p = 0.0
+
+                if position_amount is None:
+                    self.position_amount += (p * quantity)
+                else:
+                    self.position_amount += position_amount
+
+                self.trade_history.append(trade_position)
+
+                try:
+                    self.leverage = abs((self.average_price * self.quantity) / self.position_amount)
+                except:
+                    self.leverage = 0
+
+                self.close_position()
+
+                update_cnt += 1
 
     def close_position(self):
         """
@@ -193,13 +226,15 @@ class Position:
 
 if __name__ == '__main__':
     p = Position('name', 'symbol')
-    p.open_position(side='BUY', price=100, quantity=1)
+    p.open_position(side='SELL', price=100, quantity=-1, order_state=OrderState.FILLED)
     print(p.__dict__)
-    p.update_position(price=110, quantity=3)
+    p.update_position(price=110, quantity=-3, position_amount=-100, order_state=OrderState.FILLED)
     print(p.__dict__)
-    p.update_position(price=120, quantity=-1)
+    p.update_position(price=120, quantity=1, order_state=OrderState.FILLED)
     print(p.__dict__)
-    p.update_position(price=100, quantity=-3)
+    p.update_position(price=100, quantity=-2)
+    print(p.__dict__)
+    p.update_position(price=100, quantity=8, order_state=OrderState.FILLED)
     print(p.__dict__)
 
     print(p)
